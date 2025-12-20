@@ -75,6 +75,10 @@ check-format:
 lint:
     uv run ruff check .
 
+# Type check Python code
+typecheck:
+    uv run basedpyright
+
 # Fix linting issues
 lint-fix:
     uv run ruff check --fix .
@@ -89,8 +93,8 @@ clean:
     find . -name "*.gcda" -delete
     find . -name "*.gcno" -delete
 
-# Run all checks (format, lint, test with coverage)
-check: check-format lint test-coverage
+# Run all checks (format, lint, typecheck, test with coverage)
+check: check-format lint typecheck test-coverage
 
 # Default target
 default: build

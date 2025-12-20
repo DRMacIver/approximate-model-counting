@@ -1,8 +1,8 @@
 """Tests for internal C++ code not exposed to Python API."""
 
 from tests._test_internals import (
-    test_bitvector_size,
     test_bitvector_get_out_of_bounds,
+    test_bitvector_size,
 )
 
 

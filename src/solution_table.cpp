@@ -1,8 +1,9 @@
 #include "solution_table.hpp"
+
 #include <algorithm>
-#include <stdexcept>
-#include <sstream>
 #include <cstdlib>
+#include <sstream>
+#include <stdexcept>
 
 // BitVector implementation
 BitVector::BitVector() : len(0) {}
@@ -84,7 +85,8 @@ size_t SolutionTable::var_index(int64_t variable) const {
         std::ostringstream oss;
         oss << "Variable " << variable << " not found in SolutionTable variables [";
         for (size_t i = 0; i < variables.size(); i++) {
-            if (i > 0) oss << ", ";
+            if (i > 0)
+                oss << ", ";
             oss << variables[i];
         }
         oss << "]";
@@ -149,18 +151,16 @@ void SolutionTable::remove_matching(const std::vector<int64_t>& assignment) {
         values.push_back(v > 0);
     }
 
-    rows.erase(
-        std::remove_if(rows.begin(), rows.end(),
-            [&](const BitVector& row) {
-                for (size_t i = 0; i < indices.size(); i++) {
-                    if (row.get(indices[i]) != values[i]) {
-                        return false;
-                    }
-                }
-                return true;
-            }),
-        rows.end()
-    );
+    rows.erase(std::remove_if(rows.begin(), rows.end(),
+                              [&](const BitVector& row) {
+                                  for (size_t i = 0; i < indices.size(); i++) {
+                                      if (row.get(indices[i]) != values[i]) {
+                                          return false;
+                                      }
+                                  }
+                                  return true;
+                              }),
+               rows.end());
 }
 
 SolutionTable SolutionTable::clone() const {
