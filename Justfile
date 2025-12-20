@@ -41,11 +41,12 @@ test-coverage:
     # Capture coverage (ignore errors in third-party code - these will be filtered out anyway)
     lcov --capture --directory build --output-file coverage_all.info \
         --ignore-errors mismatch,inconsistent,unsupported,format
-    # Keep only our source files
+    # Keep only our source files (exclude _deps which contains third-party code)
     lcov --extract coverage_all.info \
-        '*/src/solution_information.cpp' \
-        '*/bindings/python_bindings.cpp' \
-        --output-file coverage.info
+        '*/approximate-model-counting/src/*.cpp' \
+        '*/approximate-model-counting/bindings/*.cpp' \
+        --output-file coverage.info \
+        --ignore-errors inconsistent
     lcov --list coverage.info
 
     # Check C++ coverage is 100%

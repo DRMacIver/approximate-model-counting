@@ -67,6 +67,7 @@ FetchContent_MakeAvailable(pybind11)
 # Core library
 add_library(amc_core STATIC
     src/solution_information.cpp
+    src/solution_table.cpp
 )
 
 target_include_directories(amc_core PUBLIC
@@ -86,4 +87,15 @@ target_link_libraries(_approximate_model_counting PRIVATE amc_core)
 # Install the Python module
 install(TARGETS _approximate_model_counting
     LIBRARY DESTINATION approximate_model_counting
+)
+
+# Test internals module (for testing C++ code not exposed to Python)
+pybind11_add_module(_test_internals
+    tests/cpp/test_bitvector.cpp
+)
+
+target_link_libraries(_test_internals PRIVATE amc_core)
+
+install(TARGETS _test_internals
+    LIBRARY DESTINATION tests
 )
