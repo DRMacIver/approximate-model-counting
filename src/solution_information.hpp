@@ -59,8 +59,4 @@ private:
     std::shared_ptr<CaDiCaL::Solver> solver_;
 };
 
-// Propagate assumptions and return simplified clauses
-std::vector<std::vector<int>> propagate_and_simplify(CaDiCaL::Solver& solver,
-                                                     const std::vector<int>& assumptions);
-
 }  // namespace amc
