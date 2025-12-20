@@ -89,3 +89,29 @@ class BooleanEquivalence:
     def num_representatives(self) -> int:
         """Get the number of equivalence classes."""
         ...
+
+class RefinablePartition:
+    """Refinable partition of integers 0..size-1.
+
+    Supports iterative refinement by marking elements to split partitions.
+    """
+
+    def __init__(self, size: int) -> None:
+        """Create a partition of elements 0..size-1 (all in one partition)."""
+        ...
+    def __len__(self) -> int:
+        """Get the number of partitions."""
+        ...
+    def __getitem__(self, index: int) -> list[int]:
+        """Get elements in partition at index (supports negative indexing)."""
+        ...
+    def partition_of(self, element: int) -> int:
+        """Get which partition an element is in."""
+        ...
+    def mark(self, values: list[int]) -> None:
+        """Refine partitions by marking values.
+
+        Marked values are moved to new partitions, splitting any partition
+        that contains both marked and unmarked elements.
+        """
+        ...

@@ -2,6 +2,7 @@
 #include <pybind11/stl.h>
 
 #include "boolean_equivalence.hpp"
+#include "refinable_partition.hpp"
 #include "solution_information.hpp"
 #include "solution_table.hpp"
 
@@ -52,4 +53,16 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
              "Merge two literals (assert they are equivalent)")
         .def("num_representatives", &BooleanEquivalence::num_representatives,
              "Get the number of equivalence classes");
+
+    py::class_<RefinablePartition>(m, "RefinablePartition")
+        .def(py::init<int>(), py::arg("size"),
+             "Create a partition of elements 0..size-1")
+        .def("__len__", &RefinablePartition::size,
+             "Get the number of partitions")
+        .def("__getitem__", &RefinablePartition::operator[], py::arg("index"),
+             "Get elements in partition at index (supports negative indexing)")
+        .def("partition_of", &RefinablePartition::partition_of, py::arg("element"),
+             "Get which partition an element is in")
+        .def("mark", &RefinablePartition::mark, py::arg("values"),
+             "Refine partitions by marking values");
 }
