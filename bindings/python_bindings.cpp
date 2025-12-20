@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "boolean_equivalence.hpp"
 #include "solution_information.hpp"
 #include "solution_table.hpp"
 
@@ -42,4 +43,13 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
              "Check if a variable is in the table")
         .def_property_readonly("variables", &SolutionTable::get_variables,
                                "Get the list of variables in the table");
+
+    py::class_<BooleanEquivalence>(m, "BooleanEquivalence")
+        .def(py::init<>(), "Create an empty BooleanEquivalence")
+        .def("find", &BooleanEquivalence::find, py::arg("literal"),
+             "Find the canonical representative of a literal")
+        .def("merge", &BooleanEquivalence::merge, py::arg("a"), py::arg("b"),
+             "Merge two literals (assert they are equivalent)")
+        .def("num_representatives", &BooleanEquivalence::num_representatives,
+             "Get the number of equivalence classes");
 }

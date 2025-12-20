@@ -67,3 +67,25 @@ class SolutionTable:
     def variables(self) -> list[int]:
         """Get the list of variables in the table."""
         ...
+
+class BooleanEquivalence:
+    """Union-find data structure for boolean equivalences with negation support."""
+
+    def __init__(self) -> None:
+        """Create an empty BooleanEquivalence."""
+        ...
+    def find(self, literal: int) -> int:
+        """Find the canonical representative of a literal.
+
+        Raises ValueError if literal is 0.
+        """
+        ...
+    def merge(self, a: int, b: int) -> None:
+        """Merge two literals (assert they are equivalent).
+
+        Raises RuntimeError if merging would create a contradiction (a = -a).
+        """
+        ...
+    def num_representatives(self) -> int:
+        """Get the number of equivalence classes."""
+        ...
