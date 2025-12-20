@@ -1,7 +1,7 @@
 # Build the project
 build:
     uv sync --all-extras
-    uv pip install -e . --no-build-isolation
+    uv pip install -e . --no-build-isolation --force-reinstall
 
 # Build with coverage instrumentation
 build-coverage:
@@ -10,8 +10,8 @@ build-coverage:
     ENABLE_COVERAGE=ON SKBUILD_BUILD_DIR=build uv pip install -e . --no-build-isolation --force-reinstall
 
 # Run tests
-test:
-    uv run pytest tests/ -v
+test *args:
+    uv run pytest tests/ -v {{ args }}
 
 # Run tests with coverage (Python + C++)
 test-coverage:
@@ -50,11 +50,11 @@ test-coverage:
         '*/approximate-model-counting/src/*.cpp' \
         '*/approximate-model-counting/bindings/*.cpp' \
         --output-file coverage.info \
-        --ignore-errors inconsistent
-    lcov --list coverage.info
+        --ignore-errors inconsistent,unsupported
+    lcov --list coverage.info --ignore-errors inconsistent,unsupported
 
     # Check C++ coverage is 100%
-    COVERAGE=$(lcov --summary coverage.info 2>&1 | grep "lines" | awk '{print $2}' | sed 's/%//')
+    COVERAGE=$(lcov --summary coverage.info --ignore-errors inconsistent,unsupported 2>&1 | grep "lines" | awk '{print $2}' | sed 's/%//')
     if [ -z "$COVERAGE" ]; then
         echo "Error: Could not determine C++ coverage"
         exit 1

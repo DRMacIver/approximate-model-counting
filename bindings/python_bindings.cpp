@@ -5,11 +5,18 @@
 #include "refinable_partition.hpp"
 #include "solution_information.hpp"
 #include "solution_table.hpp"
+#include "utils.hpp"
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(_approximate_model_counting, m) {
     m.doc() = "Approximate model counting using Monte Carlo methods";
+
+    m.def("is_satisfiable", &amc::is_satisfiable, py::arg("clauses"),
+          "Check if a set of clauses is satisfiable");
+
+    m.def("find_solution", &amc::find_solution, py::arg("clauses"),
+          "Find a satisfying assignment, or empty list if UNSAT");
 
     py::enum_<amc::Status>(m, "Status")
         .value("SATISFIABLE", amc::Status::SATISFIABLE)
@@ -21,7 +28,11 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
         .def("solvable", &amc::SolutionInformation::solvable,
              "Check if the problem is solvable with the assumptions")
         .def("current_clauses", &amc::SolutionInformation::current_clauses,
-             "Get clauses after unit propagation with assumptions");
+             "Get clauses after unit propagation with assumptions")
+        .def("get_backbone", &amc::SolutionInformation::get_backbone,
+             "Get the backbone literals (must be true in all solutions)")
+        .def("are_equivalent", &amc::SolutionInformation::are_equivalent, py::arg("a"),
+             py::arg("b"), "Check if two literals are equivalent (same value in all solutions)");
 
     py::class_<amc::ModelCounter>(m, "ModelCounter")
         .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"),

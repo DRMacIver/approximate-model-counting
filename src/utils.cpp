@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <set>
+#include <stdexcept>
 #include <unordered_set>
 
 namespace amc {
@@ -16,13 +17,16 @@ namespace {
 constexpr double GAMMA = 5.0;
 
 double clause_weight(size_t size) {
-    if (size < 2)
-        return 0.0;
+    // If a clause reduces to size < 2, either:
+    // - size 0 = conflict (caught earlier by propagate_and_simplify returning {{}})
+    // - size 1 = unit propagation would have caught it and added to pos_fixed,
+    //            making the clause satisfied rather than reduced
+    assert(size >= 2);
     return std::pow(GAMMA, 2.0 - static_cast<double>(size));
 }
 
 // Helper class to collect clauses from CaDiCaL's traverse_clauses
-class ClauseCollector : public CaDiCaL::ClauseIterator {
+class ClauseCollector final : public CaDiCaL::ClauseIterator {
 public:
     std::vector<std::vector<int>>& clauses;
 
@@ -35,6 +39,35 @@ public:
 };
 
 }  // namespace
+
+bool is_satisfiable(const std::vector<std::vector<int>>& clauses) {
+    CaDiCaL::Solver solver;
+    for (const auto& clause : clauses) {
+        for (int lit : clause) {
+            solver.add(lit);
+        }
+        solver.add(0);
+    }
+    return solver.solve() == 10;
+}
+
+std::vector<std::vector<int>> find_solution(const std::vector<std::vector<int>>& clauses) {
+    CaDiCaL::Solver solver;
+    for (const auto& clause : clauses) {
+        for (int lit : clause) {
+            solver.add(lit);
+        }
+        solver.add(0);
+    }
+    if (solver.solve() != 10) {
+        return {{}};  // Empty clause = UNSAT
+    }
+    std::vector<int> solution;
+    for (int var = 1; var <= solver.vars(); var++) {
+        solution.push_back(solver.val(var));
+    }
+    return {solution};
+}
 
 std::vector<std::vector<int>> propagate_and_simplify(CaDiCaL::Solver& solver,
                                                      const std::vector<int>& assumptions) {
@@ -136,22 +169,15 @@ std::unordered_map<int, double> march_score(CaDiCaL::Solver& solver,
             }
         }
 
-        // Compute base weight of non-unit clauses
-        double base_weight = 0.0;
-        for (const auto& clause : clauses) {
-            base_weight += clause_weight(clause.size());
-        }
-
         // Calculate scores for each unfixed variable
         std::unordered_map<int, double> scores;
         std::unordered_set<int> newly_fixed;  // Track vars fixed by failed literal detection
         size_t assumptions_start = assumptions.size();
 
         for (int var : unfixed_vars) {
-            // Skip if this variable was already determined to be fixed in this pass
-            if (newly_fixed.count(var)) {
-                continue;
-            }
+            // unfixed_vars is a set (each var appears once), and we only add the current
+            // var to newly_fixed. We never revisit processed vars.
+            assert(newly_fixed.count(var) == 0);
 
             double pos_reduction = 0.0;
             double neg_reduction = 0.0;
@@ -169,14 +195,34 @@ std::unordered_map<int, double> march_score(CaDiCaL::Solver& solver,
                 assumptions.push_back(-var);
                 newly_fixed.insert(var);
             } else {
-                // Calculate remaining weight after propagating +var
-                double pos_remaining = 0.0;
+                // Get implied literals after propagation
+                std::unordered_set<int> pos_fixed;
                 for (const auto& clause : pos_clauses) {
-                    if (clause.size() >= 2) {
-                        pos_remaining += clause_weight(clause.size());
+                    if (clause.size() == 1) {
+                        pos_fixed.insert(clause[0]);
                     }
                 }
-                pos_reduction = base_weight - pos_remaining;
+
+                // Calculate weighted reduction for positive polarity
+                // For each base clause, check if satisfied or reduced
+                for (const auto& clause : clauses) {
+                    bool satisfied = false;
+                    size_t reduced_size = 0;
+
+                    for (int lit : clause) {
+                        if (pos_fixed.count(lit)) {
+                            satisfied = true;
+                            break;
+                        }
+                        if (!pos_fixed.count(-lit)) {
+                            reduced_size++;
+                        }
+                    }
+
+                    if (!satisfied && reduced_size < clause.size()) {
+                        pos_reduction += clause_weight(reduced_size);
+                    }
+                }
             }
 
             // Try negative literal (only if positive didn't fail)
@@ -191,14 +237,33 @@ std::unordered_map<int, double> march_score(CaDiCaL::Solver& solver,
                     assumptions.push_back(var);
                     newly_fixed.insert(var);
                 } else {
-                    // Calculate remaining weight after propagating -var
-                    double neg_remaining = 0.0;
+                    // Get implied literals after propagation
+                    std::unordered_set<int> neg_fixed;
                     for (const auto& clause : neg_clauses) {
-                        if (clause.size() >= 2) {
-                            neg_remaining += clause_weight(clause.size());
+                        if (clause.size() == 1) {
+                            neg_fixed.insert(clause[0]);
                         }
                     }
-                    neg_reduction = base_weight - neg_remaining;
+
+                    // Calculate weighted reduction for negative polarity
+                    for (const auto& clause : clauses) {
+                        bool satisfied = false;
+                        size_t reduced_size = 0;
+
+                        for (int lit : clause) {
+                            if (neg_fixed.count(lit)) {
+                                satisfied = true;
+                                break;
+                            }
+                            if (!neg_fixed.count(-lit)) {
+                                reduced_size++;
+                            }
+                        }
+
+                        if (!satisfied && reduced_size < clause.size()) {
+                            neg_reduction += clause_weight(reduced_size);
+                        }
+                    }
                 }
             }
 

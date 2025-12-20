@@ -2,6 +2,17 @@
 
 from enum import Enum
 
+def is_satisfiable(clauses: list[list[int]]) -> bool:
+    """Check if a set of clauses is satisfiable."""
+    ...
+
+def find_solution(clauses: list[list[int]]) -> list[list[int]]:
+    """Find a satisfying assignment.
+
+    Returns [[solution]] if SAT, or [[]] if UNSAT.
+    """
+    ...
+
 class Status(Enum):
     """SAT solver result status."""
 
@@ -26,6 +37,24 @@ class SolutionInformation:
         - Satisfied clauses are removed
         - Falsified literals are removed from clauses
         - Duplicate clauses are skipped
+        """
+        ...
+    def get_backbone(self) -> list[int]:
+        """Get the backbone literals.
+
+        Returns literals that must be true in all satisfying assignments.
+        The backbone includes the assumptions and any literals forced by
+        unit propagation or proven via SAT solving.
+
+        Returns an empty list if UNSATISFIABLE.
+        """
+        ...
+    def are_equivalent(self, a: int, b: int) -> bool:
+        """Check if two literals are equivalent.
+
+        Returns True if literals a and b must have the same value in all
+        satisfying assignments. This includes the case where a and -b are
+        always opposite (are_equivalent(a, -b) returns True).
         """
         ...
 

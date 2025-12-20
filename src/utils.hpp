@@ -7,6 +7,13 @@
 
 namespace amc {
 
+// Check if a set of clauses is satisfiable.
+bool is_satisfiable(const std::vector<std::vector<int>>& clauses);
+
+// Find a satisfying assignment.
+// Returns {{solution}} if SAT, or {{}} (vector containing empty vector) if UNSAT.
+std::vector<std::vector<int>> find_solution(const std::vector<std::vector<int>>& clauses);
+
 // Propagate assumptions and return simplified clauses.
 // - Assumptions and their consequences appear as unit clauses
 // - Satisfied clauses are removed

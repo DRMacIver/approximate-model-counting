@@ -1,8 +1,41 @@
 #include "solution_information.hpp"
 
+#include <algorithm>
+#include <cassert>
+#include <unordered_set>
+
+#include "refinable_partition.hpp"
 #include "utils.hpp"
 
 namespace amc {
+
+std::vector<int> get_model(CaDiCaL::Solver& solver) {
+    int vars = solver.vars();
+    std::vector<int> model;
+    for (int i = 1; i <= vars; i++) {
+        model.push_back(solver.val(i));
+    }
+    return model;
+}
+
+std::vector<int> literals_to_indices(const std::vector<int>& model, int vars) {
+    std::vector<int> result;
+    for (int i : model) {
+        int j = std::abs(i) - 1;
+        if (i < 0) {
+            j += vars;
+        }
+        result.push_back(j);
+    }
+    return result;
+}
+
+int index_to_literal(int i, int vars) {
+    if (i >= vars) {
+        return -index_to_literal(i - vars, vars);
+    }
+    return i + 1;
+}
 
 // SolutionInformation implementation
 
@@ -10,7 +43,12 @@ SolutionInformation::SolutionInformation(std::shared_ptr<CaDiCaL::Solver> solver
                                          std::vector<int> assumptions)
     : solver_(std::move(solver)), assumptions_(std::move(assumptions)) {}
 
-Status SolutionInformation::solvable() const {
+void SolutionInformation::calculate() const {
+    if (calculated_) {
+        return;
+    }
+    calculated_ = true;
+
     // Set assumptions before solving
     for (int lit : assumptions_) {
         solver_->assume(lit);
@@ -20,19 +58,146 @@ Status SolutionInformation::solvable() const {
 
     switch (result) {
         case 10:
-            return Status::SATISFIABLE;
+            status_ = Status::SATISFIABLE;
+            break;
         case 20:
-            return Status::UNSATISFIABLE;
+            status_ = Status::UNSATISFIABLE;
+            break;
         default:
             // Coverage exclusion: UNKNOWN is only returned when solving with
             // resource limits (time/conflict limits), which will be added later.
             // Currently untestable without that functionality.
-            return Status::UNKNOWN;  // LCOV_EXCL_LINE
+            status_ = Status::UNKNOWN;  // LCOV_EXCL_LINE
+            break;                      // LCOV_EXCL_LINE
     }
+
+    if (status_ == Status::UNSATISFIABLE) {
+        return;
+    }
+
+    int num_vars = solver_->vars();
+    if (num_vars == 0) {
+        // No variables, nothing to compute
+        backbone_ = assumptions_;
+        return;
+    }
+
+    RefinablePartition partitions(num_vars * 2);
+    // Calculate backbone: literals that must be true in all solutions
+    auto model = get_model(*solver_);
+    partitions.mark(literals_to_indices(model, num_vars));
+
+    std::unordered_set<int> backbone_candidates(model.begin(), model.end());
+    backbone_ = assumptions_;
+    auto scores = amc::march_score(*solver_, backbone_);
+    for (int v : backbone_) {
+        backbone_candidates.erase(v);
+        backbone_candidates.erase(-v);
+    }
+
+    while (!backbone_candidates.empty()) {
+        // Pick candidate with highest march score
+        auto it = std::max_element(
+            backbone_candidates.begin(), backbone_candidates.end(),
+            [&](int a, int b) { return scores[std::abs(a)] < scores[std::abs(b)]; });
+        int best = *it;
+
+        // Try to find a model with the opposite polarity
+        for (int v : backbone_) {
+            solver_->assume(v);
+        }
+        solver_->assume(-best);
+
+        if (solver_->solve() == 10) {
+            // Found counter-model: remove non-matching candidates
+            auto inverted_model = get_model(*solver_);
+            partitions.mark(literals_to_indices(inverted_model, num_vars));
+            std::unordered_set<int> inverted_model_set(inverted_model.begin(),
+                                                       inverted_model.end());
+            std::erase_if(backbone_candidates,
+                          [&](int x) { return inverted_model_set.count(x) == 0; });
+        } else {
+            // No counter-model: this literal is in the backbone
+            backbone_.push_back(best);
+            // Get all implied literals
+            for (int v : backbone_) {
+                solver_->assume(v);
+            }
+            solver_->propagate();
+            std::vector<int> implied;
+            solver_->implied(implied);
+            for (int v : implied) {
+                if (backbone_candidates.count(v)) {
+                    backbone_.push_back(v);
+                }
+                backbone_candidates.erase(v);
+                backbone_candidates.erase(-v);
+            }
+        }
+    }
+    for (size_t i = 0; i < static_cast<size_t>(partitions.size());) {
+        auto part = partitions[static_cast<int>(i)];
+        assert(!part.empty());
+        if (part.size() == 1) {
+            i++;
+            continue;
+        }
+        // Sort by score (highest first)
+        std::sort(part.begin(), part.end(), [&](int a, int b) {
+            return scores[std::abs(index_to_literal(a, num_vars))] >
+                   scores[std::abs(index_to_literal(b, num_vars))];
+        });
+        int x = index_to_literal(part[0], num_vars);
+        bool split = false;
+        for (size_t j = 1; j < part.size(); j++) {
+            int y = index_to_literal(part[j], num_vars);
+            if (equivalence_.find(y) == equivalence_.find(x)) {
+                continue;
+            }
+            bool any_sat = false;
+            std::vector<std::vector<int>> assignments = {{x, -y}, {-x, y}};
+            for (const auto& splitter : assignments) {
+                for (int v : backbone_) {
+                    solver_->assume(v);
+                }
+                for (int v : splitter) {
+                    solver_->assume(v);
+                }
+                if (solver_->solve() == 10) {
+                    auto splitting_model = get_model(*solver_);
+                    partitions.mark(literals_to_indices(splitting_model, num_vars));
+                    any_sat = true;
+                }
+            }
+            if (any_sat) {
+                split = true;
+                break;
+            }
+            equivalence_.merge(x, y);
+        }
+        if (!split) {
+            i++;
+        }
+    }
+}
+
+Status SolutionInformation::solvable() const {
+    calculate();
+    return status_;
 }
 
 std::vector<std::vector<int>> SolutionInformation::current_clauses() const {
     return propagate_and_simplify(*solver_, assumptions_);
+}
+
+const std::vector<int>& SolutionInformation::get_backbone() const {
+    calculate();
+    return backbone_;
+}
+
+bool SolutionInformation::are_equivalent(int a, int b) const {
+    calculate();
+    return equivalence_.find(a) == equivalence_.find(b);
 }
 
 // ModelCounter implementation

@@ -1,124 +1,18 @@
 """Tests for march_score algorithm."""
 
 import math
-import operator
 
-from hypothesis import assume, given, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from approximate_model_counting import ModelCounter, Status
 
-# --- SAT formula generators ---
-
-
-def is_satisfiable(clauses: list[list[int]]) -> bool:
-    """Check if a formula is satisfiable using CaDiCaL."""
-    if not clauses:
-        return True
-    if any(len(c) == 0 for c in clauses):
-        return False
-    mc = ModelCounter(clauses)
-    return mc.with_assumptions([]).solvable() == Status.SATISFIABLE
-
-
-def find_solution(clauses: list[list[int]]) -> list[int] | None:
-    """Find a satisfying assignment using CaDiCaL, or None if UNSAT."""
-    if not clauses:
-        return []
-    if any(len(c) == 0 for c in clauses):
-        return None
-
-    mc = ModelCounter(clauses)
-    info = mc.with_assumptions([])
-    if info.solvable() != Status.SATISFIABLE:
-        return None
-
-    # Extract solution from the solver by checking each variable
-    variables = set()
-    for clause in clauses:
-        for lit in clause:
-            variables.add(abs(lit))
-
-    # Try to find values by testing each variable
-    solution = []
-    for var in sorted(variables):
-        # Test if var=true is consistent
-        test_assumptions = solution + [var]
-        test_info = mc.with_assumptions(test_assumptions)
-        if test_info.solvable() == Status.SATISFIABLE:
-            solution.append(var)
-        else:
-            solution.append(-var)
-
-    return solution
-
-
-@st.composite
-def sat_clauses(draw, min_clause_size=1, max_variables=10):
-    """Generate random SAT clauses."""
-    n_variables = draw(st.integers(min_clause_size, min(max_variables, min_clause_size * 2)))
-    variables = range(1, n_variables + 1)
-
-    literal = st.builds(operator.mul, st.sampled_from(variables), st.sampled_from((-1, 1)))
-
-    return draw(st.lists(st.lists(literal, unique_by=abs, min_size=min_clause_size), min_size=1))
-
-
-@st.composite
-def satisfiable_clauses(draw, min_clause_size=1, max_variables=10):
-    """Generate satisfiable SAT clauses."""
-    clauses = draw(sat_clauses(min_clause_size=min_clause_size, max_variables=max_variables))
-    assume(is_satisfiable(clauses))
-    return clauses
-
-
-@st.composite
-def unsatisfiable_clauses(draw, min_clause_size=1, max_variables=8):
-    """Generate unsatisfiable SAT clauses by adding conflict clauses."""
-    clauses = draw(sat_clauses(min_clause_size=min_clause_size, max_variables=max_variables))
-    assume(clauses)
-
-    # Keep adding clauses that rule out solutions until UNSAT
-    for _ in range(100):  # Limit iterations
-        sol = find_solution(clauses)
-        if sol is None:
-            return clauses
-        # Rule out this solution
-        subset = draw(st.lists(st.sampled_from(sol), min_size=min_clause_size, unique=True))
-        if subset:
-            clauses.append([-lit for lit in subset])
-
-    assume(False)  # Failed to make UNSAT
-    return clauses
-
-
-@st.composite
-def has_unique_solution(draw, max_variables=6):
-    """Generate clauses with exactly one satisfying assignment."""
-    clauses = draw(sat_clauses(min_clause_size=2, max_variables=max_variables))
-    sol = find_solution(clauses)
-    assume(sol is not None)
-    assert sol is not None  # For type checker
-
-    # Keep ruling out alternative solutions
-    for _ in range(50):
-        other_sol = find_solution(clauses + [[-lit for lit in sol]])
-        if other_sol is None:
-            assert is_satisfiable(clauses)
-            return clauses
-
-        to_rule_out = sorted(set(other_sol) - set(sol))
-        if not to_rule_out:
-            break
-        subset = draw(
-            st.lists(st.sampled_from(to_rule_out), min_size=min(2, len(to_rule_out)), unique=True)
-        )
-        if subset:
-            clauses.append([-lit for lit in subset])
-
-    assume(False)
-    return clauses
-
+from .strategies import (
+    has_unique_solution,
+    sat_clauses,
+    satisfiable_clauses,
+    unsatisfiable_clauses,
+)
 
 # --- Basic tests ---
 
@@ -243,7 +137,10 @@ def test_march_score_doesnt_crash(clauses):
 
 @given(
     sat_clauses(),
-    st.lists(st.integers(min_value=-10, max_value=10).filter(lambda x: x != 0), max_size=3),
+    st.lists(
+        st.integers(min_value=-10, max_value=10).filter(lambda x: x != 0),
+        max_size=3,
+    ),
 )
 @settings(max_examples=100, deadline=None)
 def test_march_score_with_assumptions(clauses, initial_assumptions):
@@ -282,7 +179,7 @@ def test_unsat_formula_returns_empty_scores(clauses):
     assert scores == {}
 
 
-@given(satisfiable_clauses(min_clause_size=2))
+@given(satisfiable_clauses())
 @settings(max_examples=50, deadline=None)
 def test_scored_variables_appear_in_clauses(clauses):
     """All scored variables should appear in the clauses."""

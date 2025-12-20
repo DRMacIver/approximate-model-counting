@@ -7,6 +7,8 @@ from ._approximate_model_counting import (  # pyright: ignore[reportMissingModul
     SolutionInformation,
     SolutionTable,
     Status,
+    find_solution,
+    is_satisfiable,
 )
 
 __all__ = [
@@ -16,5 +18,7 @@ __all__ = [
     "SolutionInformation",
     "SolutionTable",
     "Status",
+    "find_solution",
+    "is_satisfiable",
 ]
 __version__ = "0.1.0"
