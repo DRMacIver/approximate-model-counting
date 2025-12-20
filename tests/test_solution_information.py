@@ -142,3 +142,127 @@ def test_solution_information_is_immutable(clauses, assumptions):
     result1 = si.solvable()
     result2 = si.solvable()
     assert result1 == result2
+
+
+# Tests for current_clauses
+
+
+def test_current_clauses_empty_problem():
+    """Empty problem should return empty clauses."""
+    mc = ModelCounter([])
+    si = mc.with_assumptions([])
+    assert si.current_clauses() == []
+
+
+def test_current_clauses_no_assumptions():
+    """Without assumptions, should return original clauses."""
+    mc = ModelCounter([[1, 2], [-1, 3]])
+    si = mc.with_assumptions([])
+    clauses = si.current_clauses()
+    # Should have the original clauses (possibly sorted)
+    clause_set = {tuple(sorted(c)) for c in clauses}
+    assert (-1, 3) in clause_set or (-1, 3) in clause_set
+    assert (1, 2) in clause_set
+
+
+def test_current_clauses_assumption_becomes_unit():
+    """Assumption should appear as unit clause."""
+    mc = ModelCounter([[1, 2]])
+    si = mc.with_assumptions([1])
+    clauses = si.current_clauses()
+    # Should have unit clause [1]
+    assert [1] in clauses
+
+
+def test_current_clauses_satisfied_clause_removed():
+    """Clause satisfied by assumption should be removed."""
+    mc = ModelCounter([[1, 2], [3, 4]])
+    si = mc.with_assumptions([1])
+    clauses = si.current_clauses()
+    # [1, 2] should be removed (satisfied by 1)
+    # [3, 4] should remain
+    # [1] should be added as unit
+    clause_set = {tuple(c) for c in clauses}
+    assert (1,) in clause_set
+    assert (3, 4) in clause_set
+    # Original clause [1, 2] should not appear
+    assert (1, 2) not in clause_set
+
+
+def test_current_clauses_falsified_literal_removed():
+    """Falsified literals should be removed from clauses."""
+    mc = ModelCounter([[1, 2]])
+    si = mc.with_assumptions([-1])
+    clauses = si.current_clauses()
+    # -1 removes 1 from [1, 2], leaving [2]
+    # -1 is also a unit clause
+    clause_set = {tuple(c) for c in clauses}
+    assert (-1,) in clause_set
+    assert (2,) in clause_set  # Became unit after removing 1
+
+
+def test_current_clauses_unit_propagation():
+    """Unit propagation should work correctly."""
+    # (1 OR 2) AND (-1)
+    # After assumption -1: 1 is false, so [1, 2] becomes [2]
+    # [2] is unit, so 2 becomes fixed
+    mc = ModelCounter([[1, 2], [-1]])
+    si = mc.with_assumptions([])
+    clauses = si.current_clauses()
+    clause_set = {tuple(c) for c in clauses}
+    # -1 from original clause
+    assert (-1,) in clause_set
+    # 2 from propagation
+    assert (2,) in clause_set
+
+
+def test_current_clauses_contradiction_returns_empty_clause():
+    """Contradiction should return empty clause."""
+    mc = ModelCounter([[1], [-1]])
+    si = mc.with_assumptions([])
+    clauses = si.current_clauses()
+    # Should return [[]] to indicate unsatisfiability
+    assert clauses == [[]]
+
+
+def test_current_clauses_assumption_contradiction():
+    """Assumption contradicting clause should return empty clause."""
+    mc = ModelCounter([[1]])
+    si = mc.with_assumptions([-1])
+    clauses = si.current_clauses()
+    # Should return [[]] to indicate unsatisfiability
+    assert clauses == [[]]
+
+
+def test_current_clauses_no_duplicates():
+    """Duplicate clauses should be removed."""
+    mc = ModelCounter([[1, 2], [1, 2], [2, 1]])
+    si = mc.with_assumptions([])
+    clauses = si.current_clauses()
+    # Should only have one copy of [1, 2]
+    clause_set = [tuple(sorted(c)) for c in clauses]
+    assert clause_set.count((1, 2)) == 1
+
+
+def test_current_clauses_chain_propagation():
+    """Chain of unit propagations should work."""
+    # (1) AND (-1 OR 2) AND (-2 OR 3)
+    # 1 is unit -> propagates
+    # [1, -1 OR 2] -> 2 becomes unit
+    # [2, -2 OR 3] -> 3 becomes unit
+    mc = ModelCounter([[1], [-1, 2], [-2, 3]])
+    si = mc.with_assumptions([])
+    clauses = si.current_clauses()
+    clause_set = {tuple(c) for c in clauses}
+    assert (1,) in clause_set
+    assert (2,) in clause_set
+    assert (3,) in clause_set
+
+
+def test_current_clauses_is_deterministic():
+    """Multiple calls should return the same result."""
+    mc = ModelCounter([[1, 2], [-1, 3]])
+    si = mc.with_assumptions([1])
+    clauses1 = si.current_clauses()
+    clauses2 = si.current_clauses()
+    assert clauses1 == clauses2

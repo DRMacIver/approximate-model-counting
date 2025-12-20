@@ -16,6 +16,13 @@ public:
     // SolutionInformation is immutable after construction
     Status solvable() const;
 
+    // Returns the clauses after unit propagation with the current assumptions.
+    // - Assumptions and their consequences appear as unit clauses
+    // - Satisfied clauses are removed
+    // - Falsified literals are removed from clauses
+    // - Duplicate clauses are skipped
+    std::vector<std::vector<int>> current_clauses() const;
+
     // Allow copy and move (shares solver reference)
     SolutionInformation(const SolutionInformation&) = default;
     SolutionInformation& operator=(const SolutionInformation&) = default;
@@ -51,5 +58,9 @@ public:
 private:
     std::shared_ptr<CaDiCaL::Solver> solver_;
 };
+
+// Propagate assumptions and return simplified clauses
+std::vector<std::vector<int>> propagate_and_simplify(CaDiCaL::Solver& solver,
+                                                      const std::vector<int>& assumptions);
 
 }  // namespace amc

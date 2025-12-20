@@ -17,7 +17,9 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
 
     py::class_<amc::SolutionInformation>(m, "SolutionInformation")
         .def("solvable", &amc::SolutionInformation::solvable,
-             "Check if the problem is solvable with the assumptions");
+             "Check if the problem is solvable with the assumptions")
+        .def("current_clauses", &amc::SolutionInformation::current_clauses,
+             "Get clauses after unit propagation with assumptions");
 
     py::class_<amc::ModelCounter>(m, "ModelCounter")
         .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"),

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(approximate_model_counting VERSION 0.1.0 LANGUAGES CXX)
+project(approximate_model_counting VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,37 +23,34 @@ include(FetchContent)
 FetchContent_Declare(
     cadical
     GIT_REPOSITORY https://github.com/arminbiere/cadical.git
-    GIT_TAG rel-2.1.0
+    GIT_TAG rel-2.2.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(cadical)
 
-# Create build directory and generate build.hpp
-set(CADICAL_BUILD_DIR "${cadical_SOURCE_DIR}/build")
-file(MAKE_DIRECTORY ${CADICAL_BUILD_DIR})
-
-# Generate a minimal build.hpp for CaDiCaL
-if(NOT EXISTS "${CADICAL_BUILD_DIR}/build.hpp")
-    file(WRITE "${CADICAL_BUILD_DIR}/build.hpp" "
-#ifndef _build_hpp_INCLUDED
+# Generate build.hpp for CaDiCaL (in src directory)
+file(WRITE "${cadical_SOURCE_DIR}/src/build.hpp"
+"#ifndef _build_hpp_INCLUDED
 #define _build_hpp_INCLUDED
-#define VERSION \"2.1.0\"
+#define VERSION \"2.2.0\"
 #define IDENTIFIER \"unknown\"
 #define COMPILER \"${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\"
 #define FLAGS \"${CMAKE_CXX_FLAGS}\"
 #define DATE \"${CMAKE_CURRENT_LIST_FILE}\"
 #endif
 ")
-endif()
 
-# Build CaDiCaL by compiling its source files directly
-file(GLOB CADICAL_SOURCES "${cadical_SOURCE_DIR}/src/*.cpp")
-add_library(cadical STATIC ${CADICAL_SOURCES})
-target_include_directories(cadical PUBLIC
-    ${cadical_SOURCE_DIR}/src
-    ${CADICAL_BUILD_DIR}
-)
+# Build CaDiCaL library with both C and C++ files
+file(GLOB CADICAL_CPP_SOURCES "${cadical_SOURCE_DIR}/src/*.cpp")
+file(GLOB CADICAL_C_SOURCES "${cadical_SOURCE_DIR}/src/*.c")
+# Exclude files with main functions
+list(FILTER CADICAL_CPP_SOURCES EXCLUDE REGEX ".*cadical\\.cpp$")
+list(FILTER CADICAL_CPP_SOURCES EXCLUDE REGEX ".*mobical\\.cpp$")
+
+add_library(cadical STATIC ${CADICAL_CPP_SOURCES} ${CADICAL_C_SOURCES})
+target_include_directories(cadical PUBLIC ${cadical_SOURCE_DIR}/src)
 target_compile_options(cadical PRIVATE -w)  # Suppress CaDiCaL warnings
+target_compile_definitions(cadical PRIVATE NCLOSEFROM)  # Disable closefrom (not available on macOS)
 
 # Fetch pybind11
 FetchContent_Declare(

@@ -18,6 +18,16 @@ class SolutionInformation:
     def solvable(self) -> Status:
         """Check if the problem is satisfiable with the assumptions."""
         ...
+    def current_clauses(self) -> list[list[int]]:
+        """Get clauses after unit propagation with assumptions.
+
+        Returns the clauses after unit propagation:
+        - Assumptions and their consequences appear as unit clauses
+        - Satisfied clauses are removed
+        - Falsified literals are removed from clauses
+        - Duplicate clauses are skipped
+        """
+        ...
 
 class ModelCounter:
     """SAT solver wrapper for model counting."""
