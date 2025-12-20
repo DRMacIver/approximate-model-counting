@@ -38,11 +38,15 @@ test-coverage:
 
     # Generate C++ coverage report
     echo "Generating C++ coverage report..."
-    # Capture coverage (ignore errors in third-party code - these will be filtered out anyway)
-    lcov --capture --directory build --output-file coverage_all.info \
+    mkdir -p build/gcov
+    # Capture coverage from build directory to avoid .gcov files in project root
+    # (gcov creates files in the current directory)
+    pushd build/gcov > /dev/null
+    lcov --capture --directory .. --output-file ../coverage_all.info \
         --ignore-errors mismatch,inconsistent,unsupported,format
+    popd > /dev/null
     # Keep only our source files (exclude _deps which contains third-party code)
-    lcov --extract coverage_all.info \
+    lcov --extract build/coverage_all.info \
         '*/approximate-model-counting/src/*.cpp' \
         '*/approximate-model-counting/bindings/*.cpp' \
         --output-file coverage.info \
@@ -92,6 +96,7 @@ clean:
     find . -type f -name "*.so" -delete
     find . -name "*.gcda" -delete
     find . -name "*.gcno" -delete
+    find . -name "*.gcov" -delete
 
 # Run all checks (format, lint, typecheck, test with coverage)
 check: check-format lint typecheck test-coverage
