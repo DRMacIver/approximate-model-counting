@@ -1,7 +1,7 @@
 """Tests for BooleanEquivalence class."""
 
 import pytest
-from hypothesis import given, assume
+from hypothesis import given
 from hypothesis import strategies as st
 
 from approximate_model_counting import BooleanEquivalence
@@ -166,6 +166,7 @@ def test_mixed_sign_chain():
 
 # Property-based tests
 
+
 @given(st.integers(min_value=1, max_value=1000))
 def test_find_is_idempotent(v):
     """find(find(a)) == find(a)."""
@@ -197,10 +198,12 @@ def test_merge_is_symmetric(a, b):
     assert (be1.find(a) == be1.find(b)) == (be2.find(a) == be2.find(b))
 
 
-@given(st.lists(st.tuples(
-    st.integers(min_value=1, max_value=20),
-    st.integers(min_value=1, max_value=20)
-), max_size=10))
+@given(
+    st.lists(
+        st.tuples(st.integers(min_value=1, max_value=20), st.integers(min_value=1, max_value=20)),
+        max_size=10,
+    )
+)
 def test_merge_sequence_consistent(merges):
     """A sequence of merges produces consistent equivalences."""
     be = BooleanEquivalence()
@@ -212,12 +215,11 @@ def test_merge_sequence_consistent(merges):
         except RuntimeError:
             continue
 
-    # Check that equivalence is reflexive and symmetric
+    # Check that equivalence is consistent - merged literals have same |rep|
     for a, b in merges:
-        rep_a = be.find(a)
-        rep_b = be.find(b)
-        # If they were merged (and not contradicted), they should be equivalent
-        # or opposite depending on signs
+        # If they were merged (and not contradicted), they should have the
+        # same absolute representative (i.e., belong to same equivalence class)
+        assert abs(be.find(a)) == abs(be.find(b))
 
 
 @given(st.lists(st.integers(min_value=1, max_value=50), min_size=1, max_size=20, unique=True))

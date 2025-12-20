@@ -25,7 +25,7 @@ public:
 }  // namespace
 
 std::vector<std::vector<int>> propagate_and_simplify(CaDiCaL::Solver& solver,
-                                                      const std::vector<int>& assumptions) {
+                                                     const std::vector<int>& assumptions) {
     // Set assumptions and propagate using CaDiCaL
     for (int lit : assumptions) {
         solver.assume(lit);
@@ -76,7 +76,8 @@ std::vector<std::vector<int>> propagate_and_simplify(CaDiCaL::Solver& solver,
         if (!satisfied) {
             // Empty clause shouldn't happen since propagate() didn't conflict
             assert(!simplified.empty());
-            // LCOV_EXCL_START - defensive assertion: implied() already returns all unit-propagated literals
+            // LCOV_EXCL_START - defensive assertion: implied() already returns all unit-propagated
+            // literals
             if (simplified.size() == 1) {
                 // Unit clause should already be in fixed via implied()
                 assert(fixed.count(simplified[0]));

@@ -1,6 +1,6 @@
 """Approximate model counting using Monte Carlo methods."""
 
-from ._approximate_model_counting import (
+from ._approximate_model_counting import (  # pyright: ignore[reportMissingModuleSource]
     BooleanEquivalence,
     ModelCounter,
     RefinablePartition,

@@ -1,6 +1,7 @@
 #include "boolean_equivalence.hpp"
-#include <vector>
+
 #include <stdexcept>
+#include <vector>
 
 BooleanEquivalence::BooleanEquivalence() : representatives(0) {}
 
@@ -53,19 +54,19 @@ int BooleanEquivalence::find(int a) {
 }
 
 void BooleanEquivalence::merge(int a, int b) {
-    if (a == b) return;
+    if (a == b)
+        return;
 
     int a2 = find(a);
     int b2 = find(b);
 
-    if (a2 == b2) return;
+    if (a2 == b2)
+        return;
 
     if (a2 == -b2) {
-        throw std::runtime_error(
-            "Attempted to merge " + std::to_string(a) + " (=" +
-            std::to_string(a2) + ") with " + std::to_string(b) +
-            " (=" + std::to_string(b2) + ")"
-        );
+        throw std::runtime_error("Attempted to merge " + std::to_string(a) +
+                                 " (=" + std::to_string(a2) + ") with " + std::to_string(b) +
+                                 " (=" + std::to_string(b2) + ")");
     }
 
     representatives--;

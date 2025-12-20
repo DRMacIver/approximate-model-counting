@@ -1,6 +1,6 @@
 """Tests for internal C++ code not exposed to Python API."""
 
-from tests._test_internals import (
+from tests._test_internals import (  # pyright: ignore[reportMissingModuleSource]
     check_bitvector_get_out_of_bounds,
     check_bitvector_size,
 )

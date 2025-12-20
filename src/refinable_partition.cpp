@@ -1,8 +1,9 @@
 #include "refinable_partition.hpp"
+
+#include <cassert>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
-#include <stdexcept>
-#include <cassert>
 
 RefinablePartition::RefinablePartition(int size)
     : values(size),
@@ -10,7 +11,6 @@ RefinablePartition::RefinablePartition(int size)
       n_partitions(1),
       partitions(size > 0 ? size : 1),
       partitions_indexes(size, 0) {
-
     for (int i = 0; i < size; i++) {
         values[i] = i;
         values_indexes[i] = i;
@@ -48,10 +48,17 @@ int RefinablePartition::partition_of(int i) const {
 void RefinablePartition::mark(const std::vector<int>& marked_values) {
     std::unordered_map<int, int> marked;
     std::unordered_set<int> seen;
+    int n = static_cast<int>(values.size());
 
     for (int v : marked_values) {
+        // Bounds check
+        if (v < 0 || v >= n) {
+            throw std::out_of_range("marked value out of range");
+        }
+
         // Skip duplicates
-        if (seen.count(v)) continue;
+        if (seen.count(v))
+            continue;
         seen.insert(v);
 
         int i = values_indexes[v];
@@ -84,9 +91,7 @@ void RefinablePartition::mark(const std::vector<int>& marked_values) {
         partitions[new_partition].first = end - mark_count;
         partitions[new_partition].second = end;
 
-        for (int i = partitions[new_partition].first;
-             i < partitions[new_partition].second;
-             i++) {
+        for (int i = partitions[new_partition].first; i < partitions[new_partition].second; i++) {
             partitions_indexes[i] = new_partition;
         }
     }

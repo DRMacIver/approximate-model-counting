@@ -1,7 +1,7 @@
 """Tests for RefinablePartition class."""
 
 import pytest
-from hypothesis import given, assume
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from approximate_model_counting import RefinablePartition
@@ -86,6 +86,15 @@ def test_mark_entire_partition_no_split():
     rp.mark([0, 1, 2, 3, 4])
     assert len(rp) == 1
     assert sorted(rp[0]) == [0, 1, 2, 3, 4]
+
+
+def test_mark_out_of_range_raises():
+    """Marking out of range value raises IndexError."""
+    rp = RefinablePartition(5)
+    with pytest.raises(IndexError):
+        rp.mark([5])
+    with pytest.raises(IndexError):
+        rp.mark([-1])
 
 
 def test_mark_empty_list_no_change():

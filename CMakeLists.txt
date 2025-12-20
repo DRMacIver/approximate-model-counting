@@ -29,6 +29,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(cadical)
 
 # Generate build.hpp for CaDiCaL (in src directory)
+string(TIMESTAMP BUILD_DATE "%Y-%m-%d %H:%M:%S")
 file(WRITE "${cadical_SOURCE_DIR}/src/build.hpp"
 "#ifndef _build_hpp_INCLUDED
 #define _build_hpp_INCLUDED
@@ -36,7 +37,7 @@ file(WRITE "${cadical_SOURCE_DIR}/src/build.hpp"
 #define IDENTIFIER \"unknown\"
 #define COMPILER \"${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\"
 #define FLAGS \"${CMAKE_CXX_FLAGS}\"
-#define DATE \"${CMAKE_CURRENT_LIST_FILE}\"
+#define DATE \"${BUILD_DATE}\"
 #endif
 ")
 
@@ -68,6 +69,8 @@ add_library(amc_core STATIC
     src/solution_information.cpp
     src/solution_table.cpp
 )
+
+target_compile_options(amc_core PRIVATE -Wall -Wextra -Wpedantic)
 
 target_include_directories(amc_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
