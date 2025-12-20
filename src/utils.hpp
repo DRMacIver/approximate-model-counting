@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 #include "cadical.hpp"
@@ -14,5 +15,25 @@ namespace amc {
 // Returns {{}} (vector containing empty clause) if propagation detects a conflict.
 std::vector<std::vector<int>> propagate_and_simplify(CaDiCaL::Solver& solver,
                                                      const std::vector<int>& assumptions);
+
+// Calculate march-style variable scores using weighted clause reduction.
+//
+// For each variable not fixed by assumptions, computes:
+//   score(x) = reduction(x=true) × reduction(x=false)
+//
+// where reduction is the weighted count of clauses reduced by unit propagation,
+// using weights γ^(2-k) with γ=5 (binary=1, ternary=0.2, etc.).
+//
+// Failed literal detection: If propagating a literal causes a conflict, its
+// negation is forced true, added to assumptions, and scoring restarts.
+//
+// Parameters:
+//   solver - CaDiCaL solver with clauses loaded
+//   assumptions - mutable list of assumed literals; may grow if failed literals found
+//
+// Returns:
+//   Map from variable (positive int) to its score. Only includes variables
+//   that appear in at least one clause and are not fixed by assumptions.
+std::unordered_map<int, double> march_score(CaDiCaL::Solver& solver, std::vector<int>& assumptions);
 
 }  // namespace amc

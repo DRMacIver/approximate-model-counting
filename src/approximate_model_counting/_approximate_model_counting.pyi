@@ -38,6 +38,15 @@ class ModelCounter:
     def with_assumptions(self, assumptions: list[int]) -> SolutionInformation:
         """Create a SolutionInformation with the given assumptions."""
         ...
+    def march_score(self, assumptions: list[int]) -> tuple[dict[int, float], list[int]]:
+        """Calculate march-style variable scores.
+
+        Returns a tuple of (scores, updated_assumptions) where:
+        - scores: dict mapping variable (positive int) to its score
+        - updated_assumptions: the input assumptions plus any forced literals
+          discovered via failed literal detection
+        """
+        ...
 
 class SolutionTable:
     """Implicit representation of all satisfying assignments for a set of variables."""

@@ -57,4 +57,8 @@ SolutionInformation ModelCounter::with_assumptions(const std::vector<int>& assum
 }
 // LCOV_EXCL_STOP
 
+std::unordered_map<int, double> ModelCounter::march_score(std::vector<int>& assumptions) const {
+    return amc::march_score(*solver_, assumptions);
+}
+
 }  // namespace amc

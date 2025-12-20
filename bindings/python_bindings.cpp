@@ -27,7 +27,16 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
         .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"),
              "Create a ModelCounter with the given clauses")
         .def("with_assumptions", &amc::ModelCounter::with_assumptions, py::arg("assumptions"),
-             "Create a SolutionInformation with the given assumptions");
+             "Create a SolutionInformation with the given assumptions")
+        .def(
+            "march_score",
+            [](const amc::ModelCounter& mc, std::vector<int> assumptions) {
+                // Copy assumptions since we need to return both scores and updated assumptions
+                auto scores = mc.march_score(assumptions);
+                return std::make_pair(scores, assumptions);
+            },
+            py::arg("assumptions"),
+            "Calculate march-style variable scores. Returns (scores_dict, updated_assumptions).");
 
     py::class_<SolutionTable>(m, "SolutionTable")
         .def(py::init<const std::vector<int64_t>&>(), py::arg("variables"),

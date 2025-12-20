@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "cadical.hpp"
@@ -54,6 +55,11 @@ public:
 
     // Create a SolutionInformation with the given assumptions
     SolutionInformation with_assumptions(const std::vector<int>& assumptions) const;
+
+    // Calculate march-style variable scores.
+    // The assumptions parameter is modified in-place if failed literals are found.
+    // Returns a map from variable to score.
+    std::unordered_map<int, double> march_score(std::vector<int>& assumptions) const;
 
 private:
     std::shared_ptr<CaDiCaL::Solver> solver_;
