@@ -10,20 +10,23 @@ class Status(Enum):
     UNKNOWN: int
 
 class SolutionInformation:
-    """Wrapper around CaDiCaL SAT solver for solution counting."""
+    """Immutable view of a SAT problem with specific assumptions.
 
-    def __init__(self) -> None: ...
+    Created via ModelCounter.with_assumptions(). Cannot be instantiated directly.
+    """
+
     def solvable(self) -> Status:
-        """Check if the current formula is satisfiable."""
+        """Check if the problem is satisfiable with the assumptions."""
         ...
-    def add_clause(self, literals: list[int]) -> None:
-        """Add a clause to the formula."""
+
+class ModelCounter:
+    """SAT solver wrapper for model counting."""
+
+    def __init__(self, clauses: list[list[int]]) -> None:
+        """Create a ModelCounter with the given clauses."""
         ...
-    def add_assumption(self, literal: int) -> None:
-        """Add an assumption (literal that must be true)."""
-        ...
-    def clear_assumptions(self) -> None:
-        """Clear all assumptions."""
+    def with_assumptions(self, assumptions: list[int]) -> SolutionInformation:
+        """Create a SolutionInformation with the given assumptions."""
         ...
 
 class SolutionTable:

@@ -16,15 +16,14 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
         .export_values();
 
     py::class_<amc::SolutionInformation>(m, "SolutionInformation")
-        .def(py::init<>())
         .def("solvable", &amc::SolutionInformation::solvable,
-             "Check if the problem is solvable with current assumptions")
-        .def("add_clause", &amc::SolutionInformation::add_clause, py::arg("literals"),
-             "Add a clause to the solver (disjunction of literals)")
-        .def("add_assumption", &amc::SolutionInformation::add_assumption, py::arg("literal"),
-             "Add an assumption (literal that must be true)")
-        .def("clear_assumptions", &amc::SolutionInformation::clear_assumptions,
-             "Clear all assumptions");
+             "Check if the problem is solvable with the assumptions");
+
+    py::class_<amc::ModelCounter>(m, "ModelCounter")
+        .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"),
+             "Create a ModelCounter with the given clauses")
+        .def("with_assumptions", &amc::ModelCounter::with_assumptions, py::arg("assumptions"),
+             "Create a SolutionInformation with the given assumptions");
 
     py::class_<SolutionTable>(m, "SolutionTable")
         .def(py::init<const std::vector<int64_t>&>(), py::arg("variables"),

@@ -9,29 +9,47 @@ namespace amc {
 
 enum class Status { SATISFIABLE = 10, UNSATISFIABLE = 20, UNKNOWN = 0 };
 
+class ModelCounter;
+
 class SolutionInformation {
 public:
-    SolutionInformation();
-    ~SolutionInformation();
+    // SolutionInformation is immutable after construction
+    Status solvable() const;
 
-    // Delete copy constructor and assignment
-    SolutionInformation(const SolutionInformation&) = delete;
-    SolutionInformation& operator=(const SolutionInformation&) = delete;
-
-    // Allow move constructor and assignment
+    // Allow copy and move (shares solver reference)
+    SolutionInformation(const SolutionInformation&) = default;
+    SolutionInformation& operator=(const SolutionInformation&) = default;
     SolutionInformation(SolutionInformation&&) = default;
     SolutionInformation& operator=(SolutionInformation&&) = default;
 
-    Status solvable();
+private:
+    friend class ModelCounter;
 
-    // Helper methods for building up the problem
-    void add_clause(const std::vector<int>& literals);
-    void add_assumption(int literal);
-    void clear_assumptions();
+    // Private constructor - only ModelCounter can create instances
+    SolutionInformation(std::shared_ptr<CaDiCaL::Solver> solver, std::vector<int> assumptions);
+
+    std::shared_ptr<CaDiCaL::Solver> solver_;
+    std::vector<int> assumptions_;
+};
+
+class ModelCounter {
+public:
+    explicit ModelCounter(const std::vector<std::vector<int>>& clauses);
+    ~ModelCounter();
+
+    // Delete copy constructor and assignment (solver state is mutable)
+    ModelCounter(const ModelCounter&) = delete;
+    ModelCounter& operator=(const ModelCounter&) = delete;
+
+    // Allow move constructor and assignment
+    ModelCounter(ModelCounter&&) = default;
+    ModelCounter& operator=(ModelCounter&&) = default;
+
+    // Create a SolutionInformation with the given assumptions
+    SolutionInformation with_assumptions(const std::vector<int>& assumptions) const;
 
 private:
-    std::unique_ptr<CaDiCaL::Solver> solver_;
-    std::vector<int> assumptions_;
+    std::shared_ptr<CaDiCaL::Solver> solver_;
 };
 
 }  // namespace amc
