@@ -77,6 +77,14 @@ class ModelCounter:
         same seed produce identical results.
         """
         ...
+    @staticmethod
+    def from_file(path: str, seed: int | None = None) -> ModelCounter:
+        """Create a ModelCounter by reading a DIMACS CNF file.
+
+        Uses CaDiCaL's built-in parser.
+        Raises RuntimeError if the file cannot be read or parsed.
+        """
+        ...
     def with_assumptions(self, assumptions: list[int]) -> SolutionInformation:
         """Create a SolutionInformation with the given assumptions."""
         ...

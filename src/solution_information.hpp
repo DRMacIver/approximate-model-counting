@@ -78,6 +78,13 @@ public:
     // for deterministic behavior. Otherwise, a random seed is used.
     explicit ModelCounter(const std::vector<std::vector<int>>& clauses,
                           std::optional<uint64_t> seed = std::nullopt);
+
+    // Create a ModelCounter by reading a DIMACS CNF file.
+    // Uses CaDiCaL's built-in parser.
+    // Throws std::runtime_error if the file cannot be read or parsed.
+    static ModelCounter from_file(const std::string& path,
+                                  std::optional<uint64_t> seed = std::nullopt);
+
     ~ModelCounter();
 
     // Delete copy constructor and assignment (solver state is mutable)
@@ -97,6 +104,9 @@ public:
     std::unordered_map<int, double> march_score(std::vector<int>& assumptions) const;
 
 private:
+    // Private constructor for from_file
+    ModelCounter(std::shared_ptr<CaDiCaL::Solver> solver, std::mt19937 rng);
+
     std::shared_ptr<CaDiCaL::Solver> solver_;
     std::mt19937 rng_;
 };

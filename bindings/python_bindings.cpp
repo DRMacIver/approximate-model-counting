@@ -42,6 +42,9 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
              py::arg("clauses"), py::arg("seed") = std::nullopt,
              "Create a ModelCounter with the given clauses. If seed is provided, the RNG is "
              "seeded for deterministic behavior.")
+        .def_static("from_file", &amc::ModelCounter::from_file, py::arg("path"),
+                    py::arg("seed") = std::nullopt,
+                    "Create a ModelCounter by reading a DIMACS CNF file.")
         .def("with_assumptions", &amc::ModelCounter::with_assumptions, py::arg("assumptions"),
              "Create a SolutionInformation with the given assumptions")
         .def(

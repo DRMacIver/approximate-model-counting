@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <random>
+#include <stdexcept>
 #include <unordered_set>
 
 #include "refinable_partition.hpp"
@@ -281,6 +282,21 @@ ModelCounter::ModelCounter(const std::vector<std::vector<int>>& clauses,
 }
 
 ModelCounter::~ModelCounter() = default;
+
+ModelCounter::ModelCounter(std::shared_ptr<CaDiCaL::Solver> solver, std::mt19937 rng)
+    : solver_(std::move(solver)), rng_(std::move(rng)) {}
+
+ModelCounter ModelCounter::from_file(const std::string& path, std::optional<uint64_t> seed) {
+    auto solver = std::make_shared<CaDiCaL::Solver>();
+    int vars = 0;
+    const char* error = solver->read_dimacs(path.c_str(), vars, 1);
+    if (error) {
+        throw std::runtime_error(std::string("Failed to read DIMACS file: ") + error);
+    }
+    std::mt19937 rng =
+        seed.has_value() ? std::mt19937(seed.value()) : std::mt19937(std::random_device{}());
+    return ModelCounter(std::move(solver), std::move(rng));
+}
 
 // Coverage exclusion: NRVO (Named Return Value Optimization) causes the
 // closing brace to show as uncovered even though the function executes.
