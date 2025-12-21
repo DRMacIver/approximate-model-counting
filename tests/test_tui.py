@@ -7,7 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from approximate_model_counting.tui import FileStatus, ProcessingApp
+from approximate_model_counting.tui import (
+    FileStatus,
+    ProcessingApp,
+    format_file_status,
+    format_int_list,
+    format_solution_info,
+)
 
 
 @pytest.fixture
@@ -100,8 +106,8 @@ class TestProcessingAppUI:
             assert len(footers) == 1
 
     @pytest.mark.asyncio
-    async def test_app_has_data_table(self, sample_cnf: Path):
-        """Test that the app has a data table."""
+    async def test_app_has_three_data_tables(self, sample_cnf: Path):
+        """Test that the app has three data tables (processing, file list, samples)."""
         app = ProcessingApp(
             [sample_cnf], seed=42, overwrite=False, max_workers=None, auto_start=False
         )
@@ -109,7 +115,15 @@ class TestProcessingAppUI:
             from textual.widgets import DataTable
 
             tables = app.query(DataTable)
-            assert len(tables) == 1
+            assert len(tables) == 3
+
+            # Check specific tables exist
+            proc_table = app.query_one("#processing-table", DataTable)
+            file_list = app.query_one("#file-list", DataTable)
+            samples_table = app.query_one("#samples-table", DataTable)
+            assert proc_table is not None
+            assert file_list is not None
+            assert samples_table is not None
 
     @pytest.mark.asyncio
     async def test_app_has_progress_bar(self, sample_cnf: Path):
@@ -125,10 +139,15 @@ class TestProcessingAppUI:
 
     def test_quit_binding_registered(self, sample_cnf: Path):
         """Test that 'q' binding exists."""
+        from textual.binding import Binding
+
         app = ProcessingApp([sample_cnf], seed=42, overwrite=False, max_workers=None)
-        # Check that the binding is registered (BINDINGS is a list of tuples)
+        # BINDINGS is a list of Binding objects
         bindings = app.BINDINGS
-        assert any(b[0] == "q" for b in bindings)  # type: ignore[index]
+        assert any(
+            (isinstance(b, Binding) and b.key == "q") or (isinstance(b, tuple) and b[0] == "q")
+            for b in bindings
+        )
 
 
 class TestProcessingLogic:
@@ -180,19 +199,16 @@ class TestFileSorting:
     """Tests for file sorting in the TUI."""
 
     @pytest.mark.asyncio
-    async def test_pending_files_sorted_before_skipped(self, temp_dir: Path):
-        """Test that pending files appear before skipped files."""
-        # Create CNF files with names that would sort differently alphabetically
-        cnf_z = temp_dir / "z_file.cnf"
+    async def test_skipped_files_appear_in_file_list(self, temp_dir: Path):
+        """Test that skipped files appear in the file list (right pane)."""
         cnf_a = temp_dir / "a_file.cnf"
-        cnf_z.write_text("p cnf 1 1\n1 0\n")
         cnf_a.write_text("p cnf 1 1\n1 0\n")
 
         # Create a JSON for a_file so it gets skipped
         (temp_dir / "a_file.json").write_text("{}")
 
         app = ProcessingApp(
-            [cnf_z, cnf_a],  # z first in input
+            [cnf_a],
             seed=42,
             overwrite=False,  # Don't overwrite, so a_file is skipped
             max_workers=1,
@@ -202,17 +218,14 @@ class TestFileSorting:
         async with app.run_test(size=(120, 40)):
             from textual.widgets import DataTable
 
-            table = app.query_one("#file-list", DataTable)
+            file_list = app.query_one("#file-list", DataTable)
 
-            # Get row order
-            rows = list(table.rows.keys())
-            assert len(rows) == 2
-
-            # z_file should be first (pending), a_file second (skipped)
-            # Even though 'a' comes before 'z' alphabetically
-            row_data = [table.get_row(r) for r in rows]
-            assert "z_file.cnf" in str(row_data[0][0])
-            assert "a_file.cnf" in str(row_data[1][0])
+            # Skipped file should be in file list
+            rows = list(file_list.rows.keys())
+            assert len(rows) == 1
+            row_data = file_list.get_row(rows[0])
+            assert "a_file.cnf" in str(row_data[0])
+            assert "skipped" in str(row_data[1])
 
     @pytest.mark.asyncio
     async def test_skipped_files_sorted_alphabetically(self, temp_dir: Path):
@@ -338,3 +351,217 @@ class TestTUIWithProcessing:
             for cnf in cnf_files:
                 assert app.file_statuses[cnf] == FileStatus.DONE
                 assert cnf.with_suffix(".json").exists()
+
+    @pytest.mark.asyncio
+    async def test_completed_files_appear_in_file_list(self, sample_cnf: Path):
+        """Test that completed files appear in the file list."""
+        import asyncio
+
+        app = ProcessingApp(
+            [sample_cnf],
+            seed=42,
+            overwrite=True,
+            max_workers=1,
+            timeout=30,
+            auto_start=True,
+        )
+
+        async with app.run_test(size=(120, 40)):
+            from textual.widgets import DataTable
+
+            # Wait for processing to complete
+            for _ in range(100):
+                await asyncio.sleep(0.1)
+                if app.processed_count >= 1:
+                    break
+
+            # File should now be in the file list
+            file_list = app.query_one("#file-list", DataTable)
+            rows = list(file_list.rows.keys())
+            assert len(rows) == 1
+            row_data = file_list.get_row(rows[0])
+            assert "sample.cnf" in str(row_data[0])
+            assert "done" in str(row_data[1])
+
+
+class TestSampleNavigation:
+    """Tests for sample row navigation in the TUI."""
+
+    @pytest.mark.asyncio
+    async def test_sample_table_hidden_initially(self, sample_cnf: Path):
+        """Test that samples table is hidden when no file is selected."""
+        app = ProcessingApp(
+            [sample_cnf], seed=42, overwrite=False, max_workers=None, auto_start=False
+        )
+        async with app.run_test(size=(120, 40)):
+            from textual.widgets import DataTable
+
+            samples_table = app.query_one("#samples-table", DataTable)
+            assert samples_table.has_class("hidden")
+
+    @pytest.mark.asyncio
+    async def test_breadcrumb_shows_filename(self, sample_cnf: Path):
+        """Test that breadcrumb is updated when a file is selected."""
+        import asyncio
+
+        app = ProcessingApp(
+            [sample_cnf],
+            seed=42,
+            overwrite=True,
+            max_workers=1,
+            timeout=30,
+            auto_start=True,
+        )
+
+        async with app.run_test(size=(120, 40)):
+            from textual.widgets import DataTable
+
+            # Wait for processing to complete
+            for _ in range(100):
+                await asyncio.sleep(0.1)
+                if app.processed_count >= 1:
+                    break
+
+            # Select the file in the file list
+            file_list = app.query_one("#file-list", DataTable)
+            rows = list(file_list.rows.keys())
+            assert len(rows) >= 1
+
+            # Move cursor to first row (which triggers row highlighted)
+            file_list.move_cursor(row=0)
+            await asyncio.sleep(0.1)
+
+            # Verify the current file is set
+            assert app._current_file == sample_cnf
+            assert app._current_data is not None
+
+    @pytest.mark.asyncio
+    async def test_go_back_action(self, sample_cnf: Path):
+        """Test that Escape key clears sample selection."""
+        app = ProcessingApp(
+            [sample_cnf], seed=42, overwrite=False, max_workers=None, auto_start=False
+        )
+        async with app.run_test(size=(120, 40)) as pilot:
+            # Set up state to simulate being in a sample view
+            app._current_sample_idx = 0
+            app._current_file = sample_cnf
+            app._current_data = {
+                "status": "SATISFIABLE",
+                "samples": [{"backbone": [1], "table_size": 1}],
+            }
+
+            # Press Escape
+            await pilot.press("escape")
+
+            # Sample index should be cleared
+            assert app._current_sample_idx is None
+
+
+class TestFormatIntList:
+    """Tests for format_int_list formatting."""
+
+    def test_empty_list(self):
+        assert format_int_list([]) == "(none)"
+
+    def test_simple_list(self):
+        result = format_int_list([1, 2, 3])
+        assert result == "1, 2, 3"
+
+    def test_wraps_long_list(self):
+        # A list that needs wrapping
+        long_list = list(range(1, 30))
+        result = format_int_list(long_list, max_width=40)
+        assert "\n" in result
+
+    def test_negative_numbers(self):
+        result = format_int_list([-1, 2, -3])
+        assert result == "-1, 2, -3"
+
+    def test_truncates_long_list(self):
+        long_list = list(range(1, 101))  # 100 items
+        result = format_int_list(long_list, max_items=10)
+        assert "... (100 total)" in result
+        assert "1, 2, 3" in result  # First items present
+        assert "100" not in result or "100 total" in result  # 100 only in total count
+
+
+class TestFormatFileStatus:
+    """Tests for format_file_status formatting (top-level status)."""
+
+    def test_timeout_status(self):
+        data = {"status": "TIMEOUT", "timeout_seconds": 60}
+        result = format_file_status(data)
+        assert "TIMEOUT" in result
+        assert "60" in result
+
+    def test_unsat_status(self):
+        data = {"status": "UNSATISFIABLE"}
+        result = format_file_status(data)
+        assert "UNSATISFIABLE" in result
+        assert "no solutions" in result
+
+    def test_sat_with_backbone(self):
+        data = {
+            "status": "SATISFIABLE",
+            "root": {
+                "backbone": [1, 2, -3],
+                "equivalence_classes": [],
+                "table_variables": [4, 5],
+                "table_size": 4,
+                "sample_rows": [],
+            },
+        }
+        result = format_file_status(data)
+        assert "SATISFIABLE" in result
+        assert "Backbone (3 literals)" in result
+        assert "1, 2, -3" in result
+
+    def test_empty_root(self):
+        data = {"status": "SATISFIABLE", "root": {}}
+        result = format_file_status(data)
+        assert "SATISFIABLE" in result
+
+
+class TestFormatSolutionInfo:
+    """Tests for format_solution_info formatting (solution info)."""
+
+    def test_backbone_formatting(self):
+        info = {
+            "backbone": [1, 2, -3],
+            "equivalence_classes": [],
+            "table_variables": [4, 5],
+            "table_size": 4,
+            "sample_rows": [],
+        }
+        result = format_solution_info(info)
+        assert "Backbone (3 literals)" in result
+        assert "1, 2, -3" in result
+
+    def test_equivalence_classes(self):
+        info = {
+            "backbone": [],
+            "equivalence_classes": [[1, 2], [3, 4, 5]],
+            "table_variables": [],
+            "table_size": 0,
+        }
+        result = format_solution_info(info)
+        assert "Equivalence classes: 2" in result
+        assert "1, 2" in result
+        assert "3, 4, 5" in result
+
+    def test_table_info(self):
+        info = {
+            "backbone": [],
+            "equivalence_classes": [],
+            "table_variables": [1, 2, 3],
+            "table_size": 8,
+        }
+        result = format_solution_info(info)
+        assert "Solution table: 8 rows, 3 variables" in result
+        assert "Variables: 1, 2, 3" in result
+
+    def test_empty_info(self):
+        info = {}
+        result = format_solution_info(info)
+        assert "Backbone (0 literals)" in result
+        assert "(none)" in result
