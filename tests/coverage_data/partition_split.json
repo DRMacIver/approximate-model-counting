@@ -1,0 +1,101 @@
+{
+  "file": "tests/coverage_data/partition_split.cnf",
+  "status": "SATISFIABLE",
+  "root": {
+    "backbone": [],
+    "equivalence_classes": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ],
+    "table_variables": [
+      2,
+      4
+    ],
+    "table_size": 3,
+    "sample_rows": [
+      [
+        -2,
+        -4
+      ],
+      [
+        2,
+        -4
+      ],
+      [
+        -2,
+        4
+      ]
+    ]
+  },
+  "samples": [
+    {
+      "backbone": [
+        2,
+        -4,
+        3,
+        -1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2,
+          3,
+          4
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        -2,
+        -4,
+        3,
+        1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2,
+          3,
+          4
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        -2,
+        4,
+        -3,
+        1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2,
+          3,
+          4
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    }
+  ]
+}

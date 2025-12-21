@@ -121,6 +121,8 @@ void SolutionInformation::calculate() const {
         } else {
             // No counter-model: this literal is in the backbone
             backbone_.push_back(best);
+            backbone_candidates.erase(best);
+            backbone_candidates.erase(-best);
             // Get all implied literals
             for (int v : backbone_) {
                 solver_->assume(v);
@@ -265,6 +267,11 @@ bool SolutionInformation::are_equivalent(int a, int b) const {
 const SolutionTable& SolutionInformation::get_solution_table() const {
     calculate();
     return table_;
+}
+
+std::vector<std::vector<int>> SolutionInformation::get_equivalence_classes() const {
+    calculate();
+    return equivalence_.get_equivalence_classes();
 }
 
 // ModelCounter implementation

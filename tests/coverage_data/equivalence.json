@@ -1,0 +1,61 @@
+{
+  "file": "tests/coverage_data/equivalence.cnf",
+  "status": "SATISFIABLE",
+  "root": {
+    "backbone": [],
+    "equivalence_classes": [
+      [
+        1,
+        2
+      ]
+    ],
+    "table_variables": [
+      2
+    ],
+    "table_size": 2,
+    "sample_rows": [
+      [
+        -2
+      ],
+      [
+        2
+      ]
+    ]
+  },
+  "samples": [
+    {
+      "backbone": [
+        2,
+        1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        -2,
+        -1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    }
+  ]
+}

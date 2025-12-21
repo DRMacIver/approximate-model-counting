@@ -44,6 +44,12 @@ public:
     // Each row in the table represents a partial assignment that may be satisfiable.
     const SolutionTable& get_solution_table() const;
 
+    // Get equivalence classes for free variables (non-backbone, non-assumption).
+    // Returns a vector of equivalence classes, where each class is a sorted vector
+    // of variable numbers. Only classes with 2+ variables are returned.
+    // Variables in the same class are equivalent (have the same value in all solutions).
+    std::vector<std::vector<int>> get_equivalence_classes() const;
+
     // Allow copy and move (shares solver reference)
     SolutionInformation(const SolutionInformation&) = default;
     SolutionInformation& operator=(const SolutionInformation&) = default;
@@ -68,7 +74,6 @@ private:
     mutable std::vector<int> backbone_ = {};
     mutable BooleanEquivalence equivalence_ = {};
     mutable SolutionTable table_ = SolutionTable({});
-    mutable std::unordered_set<int> free_variables_ = {};
 };
 
 class ModelCounter {

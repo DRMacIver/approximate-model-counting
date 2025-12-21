@@ -1,0 +1,26 @@
+c Formula with 21 independent pairs to trigger MAX_TABLE_SIZE limit
+c Each pair (2k-1, 2k) is constrained by "at least one true"
+c This creates 3^21 possible solutions, far exceeding 1 million
+c Each pair contributes one free variable to the table
+p cnf 42 21
+1 2 0
+3 4 0
+5 6 0
+7 8 0
+9 10 0
+11 12 0
+13 14 0
+15 16 0
+17 18 0
+19 20 0
+21 22 0
+23 24 0
+25 26 0
+27 28 0
+29 30 0
+31 32 0
+33 34 0
+35 36 0
+37 38 0
+39 40 0
+41 42 0

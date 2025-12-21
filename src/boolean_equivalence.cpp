@@ -1,5 +1,6 @@
 #include "boolean_equivalence.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <vector>
 
@@ -90,4 +91,26 @@ void BooleanEquivalence::merge(int a, int b) {
 
 int BooleanEquivalence::num_representatives() const {
     return representatives;
+}
+
+std::vector<std::vector<int>> BooleanEquivalence::get_equivalence_classes() {
+    // Group variables by their representative
+    std::unordered_map<int, std::vector<int>> groups;
+    for (const auto& [var, _] : table) {
+        int rep = std::abs(find(var));
+        groups[rep].push_back(var);
+    }
+
+    // Collect classes with 2+ variables
+    std::vector<std::vector<int>> result;
+    for (auto& [rep, members] : groups) {
+        if (members.size() >= 2) {
+            std::sort(members.begin(), members.end());
+            result.push_back(std::move(members));
+        }
+    }
+
+    // Sort classes for deterministic output
+    std::sort(result.begin(), result.end());
+    return result;
 }

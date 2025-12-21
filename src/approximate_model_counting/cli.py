@@ -36,21 +36,7 @@ def build_solution_info(info: SolutionInformation) -> dict[str, Any]:
     """Extract solution information to a JSON-serializable dict."""
     backbone = list(info.get_backbone())
     table = info.get_solution_table()
-
-    # Build equivalence classes (only multi-variable classes)
-    equiv_classes: list[list[int]] = []
-    seen: set[int] = set()
-    for var in table.variables:
-        if var in seen:
-            continue
-        equiv_class = [var]
-        for other in table.variables:
-            if other != var and info.are_equivalent(var, other):
-                equiv_class.append(other)
-                seen.add(other)
-        if len(equiv_class) > 1:
-            equiv_classes.append(sorted(equiv_class, key=abs))
-        seen.add(var)
+    equiv_classes = [list(cls) for cls in info.get_equivalence_classes()]
 
     # Sample up to 10 rows
     sample_rows: list[list[int]] = []

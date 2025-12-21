@@ -1,0 +1,24 @@
+{
+  "file": "tests/coverage_data/empty.cnf",
+  "status": "SATISFIABLE",
+  "root": {
+    "backbone": [],
+    "equivalence_classes": [],
+    "table_variables": [],
+    "table_size": 1,
+    "sample_rows": [
+      []
+    ]
+  },
+  "samples": [
+    {
+      "backbone": [],
+      "equivalence_classes": [],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    }
+  ]
+}

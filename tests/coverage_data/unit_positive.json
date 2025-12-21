@@ -1,0 +1,28 @@
+{
+  "file": "tests/coverage_data/unit_positive.cnf",
+  "status": "SATISFIABLE",
+  "root": {
+    "backbone": [
+      1
+    ],
+    "equivalence_classes": [],
+    "table_variables": [],
+    "table_size": 1,
+    "sample_rows": [
+      []
+    ]
+  },
+  "samples": [
+    {
+      "backbone": [
+        1
+      ],
+      "equivalence_classes": [],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    }
+  ]
+}

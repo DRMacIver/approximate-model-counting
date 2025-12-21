@@ -1,0 +1,3 @@
+c Simple satisfiable formula with two variables
+p cnf 2 1
+1 2 0

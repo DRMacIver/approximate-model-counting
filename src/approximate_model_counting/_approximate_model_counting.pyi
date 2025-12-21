@@ -65,6 +65,14 @@ class SolutionInformation:
         satisfiable when combined with the backbone.
         """
         ...
+    def get_equivalence_classes(self) -> list[list[int]]:
+        """Get equivalence classes for free variables.
+
+        Returns a list of equivalence classes, where each class is a sorted
+        list of variable numbers. Only classes with 2+ variables are returned.
+        Variables in the same class have the same value in all solutions.
+        """
+        ...
 
 class ModelCounter:
     """SAT solver wrapper for model counting."""

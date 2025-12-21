@@ -1,0 +1,88 @@
+{
+  "file": "tests/coverage_data/backbone.cnf",
+  "status": "SATISFIABLE",
+  "root": {
+    "backbone": [
+      1
+    ],
+    "equivalence_classes": [],
+    "table_variables": [
+      2,
+      3
+    ],
+    "table_size": 3,
+    "sample_rows": [
+      [
+        2,
+        -3
+      ],
+      [
+        -2,
+        3
+      ],
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  "samples": [
+    {
+      "backbone": [
+        2,
+        -3,
+        1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2,
+          3
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        2,
+        3,
+        1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2,
+          3
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        -2,
+        3,
+        1
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2,
+          3
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    }
+  ]
+}

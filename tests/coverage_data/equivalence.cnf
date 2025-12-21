@@ -1,0 +1,5 @@
+c Formula implying x1 <-> x2 (equivalence)
+c (x1 -> x2) and (x2 -> x1)
+p cnf 2 2
+-1 2 0
+-2 1 0

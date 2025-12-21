@@ -1,0 +1,14 @@
+{
+  "file": "tests/coverage_data/unsat_units.cnf",
+  "status": "UNSATISFIABLE",
+  "root": {
+    "backbone": [],
+    "equivalence_classes": [],
+    "table_variables": [],
+    "table_size": 1,
+    "sample_rows": [
+      []
+    ]
+  },
+  "samples": []
+}

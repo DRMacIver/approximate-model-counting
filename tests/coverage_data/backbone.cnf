@@ -1,0 +1,5 @@
+c Formula with forced backbone literal
+c x1 must be true, x2 and x3 are free
+p cnf 3 2
+1 0
+2 3 0

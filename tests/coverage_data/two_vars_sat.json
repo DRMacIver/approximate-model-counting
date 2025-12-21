@@ -1,0 +1,80 @@
+{
+  "file": "tests/coverage_data/two_vars_sat.cnf",
+  "status": "SATISFIABLE",
+  "root": {
+    "backbone": [],
+    "equivalence_classes": [],
+    "table_variables": [
+      1,
+      2
+    ],
+    "table_size": 3,
+    "sample_rows": [
+      [
+        1,
+        -2
+      ],
+      [
+        -1,
+        2
+      ],
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  "samples": [
+    {
+      "backbone": [
+        1,
+        -2
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        1,
+        2
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    },
+    {
+      "backbone": [
+        -1,
+        2
+      ],
+      "equivalence_classes": [
+        [
+          1,
+          2
+        ]
+      ],
+      "table_variables": [],
+      "table_size": 1,
+      "sample_rows": [
+        []
+      ]
+    }
+  ]
+}

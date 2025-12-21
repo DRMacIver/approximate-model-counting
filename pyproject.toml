@@ -24,6 +24,7 @@ dev = [
     "scikit-build-core>=0.10.0",
     "pybind11>=2.13.0",
     "pytest-textual-snapshot>=1.0.0",
+    "shrinkray @ git+https://github.com/DRMacIver/shrinkray.git",
 ]
 
 [build-system]
