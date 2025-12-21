@@ -6,6 +6,118 @@ from approximate_model_counting import ModelCounter, Status, is_satisfiable
 
 from .strategies import satisfiable_clauses
 
+# --- Determinism tests ---
+
+
+def test_same_seed_produces_same_table():
+    """Using the same seed should produce identical solution tables."""
+    # Use a formula with enough variables to exercise the random sampling
+    clauses = [[1, 2, 3], [-1, -2], [-2, -3], [1, 3]]
+    seed = 42
+
+    mc1 = ModelCounter(clauses, seed=seed)
+    info1 = mc1.with_assumptions([])
+    table1 = info1.get_solution_table()
+
+    mc2 = ModelCounter(clauses, seed=seed)
+    info2 = mc2.with_assumptions([])
+    table2 = info2.get_solution_table()
+
+    assert len(table1) == len(table2)
+    assert table1.variables == table2.variables
+    for i in range(len(table1)):
+        assert list(table1[i]) == list(table2[i])
+
+
+def test_different_seeds_may_produce_different_tables():
+    """Different seeds may produce different solution tables."""
+    # Use a larger formula where randomness matters more
+    clauses = [list(range(1, 16))]  # Single clause with 15 variables
+    seed1 = 12345
+    seed2 = 67890
+
+    mc1 = ModelCounter(clauses, seed=seed1)
+    info1 = mc1.with_assumptions([])
+    table1 = info1.get_solution_table()
+
+    mc2 = ModelCounter(clauses, seed=seed2)
+    info2 = mc2.with_assumptions([])
+    table2 = info2.get_solution_table()
+
+    # Tables may differ in size or content (though not guaranteed)
+    # At minimum, both should be valid tables
+    assert len(table1) >= 1
+    assert len(table2) >= 1
+
+
+def test_multiple_with_assumptions_from_same_counter():
+    """Multiple with_assumptions calls should get independent RNGs."""
+    clauses = [[1, 2, 3, 4], [-1, -2], [-3, -4]]
+    seed = 999
+
+    mc = ModelCounter(clauses, seed=seed)
+    info1 = mc.with_assumptions([])
+    info2 = mc.with_assumptions([])
+
+    table1 = info1.get_solution_table()
+    table2 = info2.get_solution_table()
+
+    # Both should be valid
+    assert len(table1) >= 1
+    assert len(table2) >= 1
+
+
+def test_seeded_counter_is_reproducible_across_assumptions():
+    """Calling with_assumptions in the same order should be reproducible."""
+    clauses = [[1, 2, 3], [-1, 2], [-2, 3]]
+    seed = 777
+
+    # First run
+    mc1 = ModelCounter(clauses, seed=seed)
+    info1a = mc1.with_assumptions([])
+    info1b = mc1.with_assumptions([1])
+    table1a = info1a.get_solution_table()
+    table1b = info1b.get_solution_table()
+
+    # Second run with same seed
+    mc2 = ModelCounter(clauses, seed=seed)
+    info2a = mc2.with_assumptions([])
+    info2b = mc2.with_assumptions([1])
+    table2a = info2a.get_solution_table()
+    table2b = info2b.get_solution_table()
+
+    # Should be identical
+    assert list(table1a.variables) == list(table2a.variables)
+    assert len(table1a) == len(table2a)
+    for i in range(len(table1a)):
+        assert list(table1a[i]) == list(table2a[i])
+
+    assert list(table1b.variables) == list(table2b.variables)
+    assert len(table1b) == len(table2b)
+    for i in range(len(table1b)):
+        assert list(table1b[i]) == list(table2b[i])
+
+
+@given(satisfiable_clauses(max_variables=8))
+@settings(max_examples=20, deadline=None)
+def test_seeded_is_deterministic(clauses):
+    """With a seed, the solution table should be deterministic."""
+    seed = 123456
+
+    mc1 = ModelCounter(clauses, seed=seed)
+    info1 = mc1.with_assumptions([])
+    table1 = info1.get_solution_table()
+
+    mc2 = ModelCounter(clauses, seed=seed)
+    info2 = mc2.with_assumptions([])
+    table2 = info2.get_solution_table()
+
+    assert len(table1) == len(table2)
+    assert list(table1.variables) == list(table2.variables)
+    for i in range(len(table1)):
+        assert list(table1[i]) == list(table2[i])
+
+
 # --- Basic tests ---
 
 

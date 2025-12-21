@@ -38,8 +38,10 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
              "Get the solution table for non-backbone variables");
 
     py::class_<amc::ModelCounter>(m, "ModelCounter")
-        .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"),
-             "Create a ModelCounter with the given clauses")
+        .def(py::init<const std::vector<std::vector<int>>&, std::optional<uint64_t>>(),
+             py::arg("clauses"), py::arg("seed") = std::nullopt,
+             "Create a ModelCounter with the given clauses. If seed is provided, the RNG is "
+             "seeded for deterministic behavior.")
         .def("with_assumptions", &amc::ModelCounter::with_assumptions, py::arg("assumptions"),
              "Create a SolutionInformation with the given assumptions")
         .def(

@@ -69,8 +69,13 @@ class SolutionInformation:
 class ModelCounter:
     """SAT solver wrapper for model counting."""
 
-    def __init__(self, clauses: list[list[int]]) -> None:
-        """Create a ModelCounter with the given clauses."""
+    def __init__(self, clauses: list[list[int]], seed: int | None = None) -> None:
+        """Create a ModelCounter with the given clauses.
+
+        If seed is provided, the random number generator is seeded for
+        deterministic behavior. This ensures that repeated calls with the
+        same seed produce identical results.
+        """
         ...
     def with_assumptions(self, assumptions: list[int]) -> SolutionInformation:
         """Create a SolutionInformation with the given assumptions."""

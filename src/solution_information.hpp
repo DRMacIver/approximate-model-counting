@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <random>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -52,13 +54,15 @@ private:
     friend class ModelCounter;
 
     // Private constructor - only ModelCounter can create instances
-    SolutionInformation(std::shared_ptr<CaDiCaL::Solver> solver, std::vector<int> assumptions);
+    SolutionInformation(std::shared_ptr<CaDiCaL::Solver> solver, std::vector<int> assumptions,
+                        std::mt19937 rng);
 
     // Lazily compute satisfiability (called by solvable())
     void calculate() const;
 
     std::shared_ptr<CaDiCaL::Solver> solver_;
     std::vector<int> assumptions_;
+    mutable std::mt19937 rng_;
     mutable bool calculated_ = false;
     mutable Status status_ = Status::UNKNOWN;
     mutable std::vector<int> backbone_ = {};
@@ -69,7 +73,11 @@ private:
 
 class ModelCounter {
 public:
-    explicit ModelCounter(const std::vector<std::vector<int>>& clauses);
+    // Create a ModelCounter with the given clauses.
+    // If seed is provided, it will be used to seed the random number generator
+    // for deterministic behavior. Otherwise, a random seed is used.
+    explicit ModelCounter(const std::vector<std::vector<int>>& clauses,
+                          std::optional<uint64_t> seed = std::nullopt);
     ~ModelCounter();
 
     // Delete copy constructor and assignment (solver state is mutable)
@@ -81,7 +89,7 @@ public:
     ModelCounter& operator=(ModelCounter&&) = default;
 
     // Create a SolutionInformation with the given assumptions
-    SolutionInformation with_assumptions(const std::vector<int>& assumptions) const;
+    SolutionInformation with_assumptions(const std::vector<int>& assumptions);
 
     // Calculate march-style variable scores.
     // The assumptions parameter is modified in-place if failed literals are found.
@@ -90,6 +98,7 @@ public:
 
 private:
     std::shared_ptr<CaDiCaL::Solver> solver_;
+    std::mt19937 rng_;
 };
 
 }  // namespace amc

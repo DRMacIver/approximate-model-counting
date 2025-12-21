@@ -41,8 +41,8 @@ int index_to_literal(int i, int vars) {
 // SolutionInformation implementation
 
 SolutionInformation::SolutionInformation(std::shared_ptr<CaDiCaL::Solver> solver,
-                                         std::vector<int> assumptions)
-    : solver_(std::move(solver)), assumptions_(std::move(assumptions)) {}
+                                         std::vector<int> assumptions, std::mt19937 rng)
+    : solver_(std::move(solver)), assumptions_(std::move(assumptions)), rng_(std::move(rng)) {}
 
 void SolutionInformation::calculate() const {
     if (calculated_) {
@@ -202,8 +202,6 @@ void SolutionInformation::calculate() const {
     }
     std::sort(table_candidates.begin(), table_candidates.end(),
               [&](int a, int b) { return scores[a] > scores[b]; });
-    std::random_device rd;
-    std::mt19937 rng(rd());
 
     std::unordered_set<int> used = {};
 
@@ -221,7 +219,7 @@ void SolutionInformation::calculate() const {
         int successes = 0;
         while (successes < REQUIRED_SUCCESSES && table_.size() > 1) {
             std::uniform_int_distribution<int> row_dist(0, table_.size() - 1);
-            int row_idx = row_dist(rng);
+            int row_idx = row_dist(rng_);
             std::vector<int64_t> row = table_[row_idx];
             solver_->reset_assumptions();
             for (int lit : backbone_)
@@ -270,8 +268,10 @@ const SolutionTable& SolutionInformation::get_solution_table() const {
 
 // ModelCounter implementation
 
-ModelCounter::ModelCounter(const std::vector<std::vector<int>>& clauses)
-    : solver_(std::make_shared<CaDiCaL::Solver>()) {
+ModelCounter::ModelCounter(const std::vector<std::vector<int>>& clauses,
+                           std::optional<uint64_t> seed)
+    : solver_(std::make_shared<CaDiCaL::Solver>()),
+      rng_(seed.has_value() ? std::mt19937(seed.value()) : std::mt19937(std::random_device{}())) {
     for (const auto& clause : clauses) {
         for (int lit : clause) {
             solver_->add(lit);
@@ -285,8 +285,10 @@ ModelCounter::~ModelCounter() = default;
 // Coverage exclusion: NRVO (Named Return Value Optimization) causes the
 // closing brace to show as uncovered even though the function executes.
 // LCOV_EXCL_START
-SolutionInformation ModelCounter::with_assumptions(const std::vector<int>& assumptions) const {
-    return {solver_, assumptions};
+SolutionInformation ModelCounter::with_assumptions(const std::vector<int>& assumptions) {
+    // Fork a new RNG for this SolutionInformation by generating a seed from the parent RNG
+    std::mt19937 forked_rng(rng_());
+    return {solver_, assumptions, std::move(forked_rng)};
 }
 // LCOV_EXCL_STOP
 
