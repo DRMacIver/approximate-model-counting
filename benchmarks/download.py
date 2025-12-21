@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import lzma
-import os
 import sys
 import tarfile
 import urllib.request
@@ -134,9 +133,8 @@ def decompress_xz_files(directory: Path) -> int:
         if cnf_path.exists():
             continue
         try:
-            with lzma.open(xz_path, "rb") as xz_file:
-                with open(cnf_path, "wb") as cnf_file:
-                    cnf_file.write(xz_file.read())
+            with lzma.open(xz_path, "rb") as xz_file, open(cnf_path, "wb") as cnf_file:
+                cnf_file.write(xz_file.read())
             xz_path.unlink()  # Remove the .xz file after decompression
             count += 1
         except Exception as e:

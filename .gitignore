@@ -56,11 +56,10 @@ cmake-build-*/
 *.gcda
 *.gcno
 *.gcov
+*.info
 coverage/
 coverage.xml
-lcov.info
-coverage.info
-coverage_all.info
+coverage_html/
 coverage_html_cpp/
 
 # IDEs
