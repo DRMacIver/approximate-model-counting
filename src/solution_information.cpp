@@ -288,6 +288,7 @@ ModelCounter::ModelCounter(std::shared_ptr<CaDiCaL::Solver> solver, std::mt19937
 
 ModelCounter ModelCounter::from_file(const std::string& path, std::optional<uint64_t> seed) {
     auto solver = std::make_shared<CaDiCaL::Solver>();
+    solver->set("quiet", 1);  // Suppress CaDiCaL output
     int vars = 0;
     const char* error = solver->read_dimacs(path.c_str(), vars, 1);
     if (error) {
