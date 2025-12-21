@@ -38,6 +38,10 @@ public:
     // For opposite literals, are_equivalent(a, -b) returns true.
     bool are_equivalent(int a, int b) const;
 
+    // Get the solution table representing possible assignments for non-backbone variables.
+    // Each row in the table represents a partial assignment that may be satisfiable.
+    const SolutionTable& get_solution_table() const;
+
     // Allow copy and move (shares solver reference)
     SolutionInformation(const SolutionInformation&) = default;
     SolutionInformation& operator=(const SolutionInformation&) = default;

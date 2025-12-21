@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <random>
 #include <unordered_set>
 
 #include "refinable_partition.hpp"
@@ -179,6 +180,68 @@ void SolutionInformation::calculate() const {
             i++;
         }
     }
+
+    std::set<std::vector<int>> normalised_clauses_set;
+    for (const auto& clause : propagate_and_simplify(*solver_, backbone_)) {
+        std::set<int> normalised_clause;
+        for (int lit : clause) {
+            normalised_clause.insert(equivalence_.find(lit));
+        }
+        std::vector<int> sorted_clause(normalised_clause.begin(), normalised_clause.end());
+        normalised_clauses_set.insert(sorted_clause);
+    }
+    std::vector<std::vector<int>> normalised_clauses(normalised_clauses_set.begin(),
+                                                     normalised_clauses_set.end());
+    assert(normalised_clauses.size() > 0);
+    scores = march_score(*solver_, backbone_);
+
+    std::vector<int> table_candidates;
+    table_candidates.reserve(scores.size());
+    for (const auto& [k, v] : scores) {
+        table_candidates.push_back(k);
+    }
+    std::sort(table_candidates.begin(), table_candidates.end(),
+              [&](int a, int b) { return scores[a] > scores[b]; });
+    std::random_device rd;
+    std::mt19937 rng(rd());
+
+    std::unordered_set<int> used = {};
+
+    constexpr size_t MAX_TABLE_SIZE = 1'000'000;
+    constexpr int REQUIRED_SUCCESSES = 10;
+
+    for (int var : table_candidates) {
+        int representative = abs(equivalence_.find(var));
+        if (used.contains(representative))
+            continue;
+        if (table_.size() > MAX_TABLE_SIZE)
+            break;
+        used.insert(representative);
+        table_.add_variable(var);
+        int successes = 0;
+        while (successes < REQUIRED_SUCCESSES && table_.size() > 1) {
+            std::uniform_int_distribution<int> row_dist(0, table_.size() - 1);
+            int row_idx = row_dist(rng);
+            std::vector<int64_t> row = table_[row_idx];
+            solver_->reset_assumptions();
+            for (int lit : backbone_)
+                solver_->assume(lit);
+            for (int64_t lit : row)
+                solver_->assume(lit);
+            if (solver_->solve() == 10) {
+                successes += 1;
+            } else {
+                successes = 0;
+                std::vector<int64_t> core;
+                core.reserve(row.size());
+                for (int64_t lit : row)
+                    if (solver_->failed(lit))
+                        core.push_back(lit);
+                assert(core.size() > 0);
+                table_.remove_matching(core);
+            }
+        }
+    }
 }
 
 Status SolutionInformation::solvable() const {
@@ -198,6 +261,11 @@ const std::vector<int>& SolutionInformation::get_backbone() const {
 bool SolutionInformation::are_equivalent(int a, int b) const {
     calculate();
     return equivalence_.find(a) == equivalence_.find(b);
+}
+
+const SolutionTable& SolutionInformation::get_solution_table() const {
+    calculate();
+    return table_;
 }
 
 // ModelCounter implementation

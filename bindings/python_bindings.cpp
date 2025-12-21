@@ -32,7 +32,10 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
         .def("get_backbone", &amc::SolutionInformation::get_backbone,
              "Get the backbone literals (must be true in all solutions)")
         .def("are_equivalent", &amc::SolutionInformation::are_equivalent, py::arg("a"),
-             py::arg("b"), "Check if two literals are equivalent (same value in all solutions)");
+             py::arg("b"), "Check if two literals are equivalent (same value in all solutions)")
+        .def("get_solution_table", &amc::SolutionInformation::get_solution_table,
+             py::return_value_policy::reference_internal,
+             "Get the solution table for non-backbone variables");
 
     py::class_<amc::ModelCounter>(m, "ModelCounter")
         .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"),

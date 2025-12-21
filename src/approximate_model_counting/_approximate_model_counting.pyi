@@ -57,6 +57,14 @@ class SolutionInformation:
         always opposite (are_equivalent(a, -b) returns True).
         """
         ...
+    def get_solution_table(self) -> SolutionTable:
+        """Get the solution table for non-backbone variables.
+
+        Returns a table where each row represents a partial assignment
+        for variables not in the backbone. These assignments may be
+        satisfiable when combined with the backbone.
+        """
+        ...
 
 class ModelCounter:
     """SAT solver wrapper for model counting."""
