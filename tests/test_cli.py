@@ -11,9 +11,11 @@ from click.testing import CliRunner
 
 from approximate_model_counting import ModelCounter, Status
 from approximate_model_counting.cli import (
+    DEFAULT_TIMEOUT,
     build_solution_info,
     collect_cnf_files,
     main,
+    make_timeout_result,
     process_file,
 )
 
@@ -244,3 +246,36 @@ class TestFromFile:
 
         assert len(table1) == len(table2)
         assert list(table1.variables) == list(table2.variables)
+
+
+class TestTimeout:
+    """Tests for timeout functionality."""
+
+    def test_default_timeout_is_600(self):
+        assert DEFAULT_TIMEOUT == 600
+
+    def test_make_timeout_result_structure(self, sample_cnf: Path):
+        result = make_timeout_result(sample_cnf, 60.0)
+
+        assert result["file"] == str(sample_cnf)
+        assert result["status"] == "TIMEOUT"
+        assert result["timeout_seconds"] == 60.0
+        assert result["root"] is None
+        assert result["samples"] == []
+
+    def test_timeout_zero_disables(self, sample_cnf: Path):
+        runner = CliRunner()
+        result = runner.invoke(main, [str(sample_cnf), "--timeout", "0", "--seed", "42"])
+        assert result.exit_code == 0
+
+        json_path = sample_cnf.with_suffix(".json")
+        with open(json_path) as f:
+            data = json.load(f)
+
+        # Should complete normally, not timeout
+        assert data["status"] == "SATISFIABLE"
+
+    def test_timeout_option_accepted(self, sample_cnf: Path):
+        runner = CliRunner()
+        result = runner.invoke(main, [str(sample_cnf), "-t", "300", "--seed", "42"])
+        assert result.exit_code == 0

@@ -43,6 +43,9 @@ class TestFileStatus:
     def test_skipped_status(self):
         assert FileStatus.SKIPPED == "skipped"
 
+    def test_timeout_status(self):
+        assert FileStatus.TIMEOUT == "timeout"
+
 
 class TestProcessingAppInit:
     """Tests for ProcessingApp initialization."""

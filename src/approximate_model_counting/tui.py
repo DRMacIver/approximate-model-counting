@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, TimeoutError, as_completed
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -23,6 +23,7 @@ class FileStatus:
     DONE = "done"
     SKIPPED = "skipped"
     ERROR = "error"
+    TIMEOUT = "timeout"
 
 
 class ProcessingApp(App[None]):
@@ -69,6 +70,10 @@ class ProcessingApp(App[None]):
     .status-error {
         color: red;
     }
+
+    .status-timeout {
+        color: orange;
+    }
     """
 
     BINDINGS = [
@@ -81,6 +86,7 @@ class ProcessingApp(App[None]):
         seed: int | None,
         overwrite: bool,
         max_workers: int | None,
+        timeout: float | None = None,
         auto_start: bool = True,
     ) -> None:
         super().__init__()
@@ -88,6 +94,7 @@ class ProcessingApp(App[None]):
         self.seed = seed
         self.overwrite = overwrite
         self.max_workers = max_workers
+        self.timeout = timeout
         self.auto_start = auto_start
         self.file_statuses: dict[Path, str] = {}
         self.processed_count = 0
@@ -138,13 +145,13 @@ class ProcessingApp(App[None]):
 
     async def _process_all(self, files: list[Path]) -> None:
         """Process all files in parallel."""
-        from approximate_model_counting.cli import _process_file_wrapper
+        from approximate_model_counting.cli import _process_file_wrapper, make_timeout_result
 
         self._update_status(f"Processing {len(files)} files...")
 
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             args = [(f, self.seed) for f in files]
-            futures: dict[Future[tuple[Path, dict]], Path] = {
+            futures: dict[Future[tuple[Path, dict[str, Any]]], Path] = {
                 executor.submit(_process_file_wrapper, arg): arg[0] for arg in args
             }
 
@@ -155,11 +162,19 @@ class ProcessingApp(App[None]):
             for future in as_completed(futures):
                 cnf_path = futures[future]
                 try:
-                    _, result = future.result()
+                    _, result = future.result(timeout=self.timeout)
                     # Write the JSON file
                     json_path = cnf_path.with_suffix(".json")
                     json_path.write_text(json.dumps(result, indent=2))
                     self._update_file_status(cnf_path, FileStatus.DONE)
+                except TimeoutError:
+                    # Cancel and write timeout placeholder
+                    future.cancel()
+                    result = make_timeout_result(cnf_path, self.timeout if self.timeout else 0)
+                    json_path = cnf_path.with_suffix(".json")
+                    json_path.write_text(json.dumps(result, indent=2))
+                    self._update_file_status(cnf_path, FileStatus.TIMEOUT)
+                    self.log.warning(f"Timeout processing {cnf_path}")
                 except Exception as e:
                     self._update_file_status(cnf_path, FileStatus.ERROR)
                     self.log.error(f"Error processing {cnf_path}: {e}")
@@ -191,7 +206,8 @@ def run_tui(
     seed: int | None,
     overwrite: bool,
     max_workers: int | None,
+    timeout: float | None = None,
 ) -> None:
     """Run the TUI for processing CNF files."""
-    app = ProcessingApp(cnf_files, seed, overwrite, max_workers)
+    app = ProcessingApp(cnf_files, seed, overwrite, max_workers, timeout)
     app.run()
