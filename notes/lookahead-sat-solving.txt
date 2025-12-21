@@ -1,0 +1,295 @@
+# Lookahead SAT Solving: Variable Selection, Cubing, and Counting
+
+## Introduction
+
+The March family of lookahead SAT solvers pioneered sophisticated variable selection heuristics based on weighted clause reduction, using the product formula score(x) = h(x=T) × h(x=F) to balance search trees. These heuristics form the foundation of cube-and-conquer methods for parallel SAT solving and connect deeply to approximate model counting through backdoor theory and solution space partitioning. This report provides a comprehensive technical analysis of these interrelated techniques, with emphasis on the specific formulas, algorithms, and theoretical justifications.
+
+## 1. Weighted Clause Reduction: The Core of March Heuristics
+
+The March solvers (march_eq, march_dl, march_br, march_hi, march_ks) employ the **Clause Reduction Heuristic (CRH)** originally developed by Kullmann in OKsolver [Kullmann, 2009]. During lookahead on a variable x, the solver assigns x to true, performs Boolean constraint propagation (BCP), and measures the "reduction" in the formula—specifically, the weighted count of newly created (reduced but not satisfied) clauses.
+
+The central weighting formula follows an exponential decay:
+
+```
+weight(k) = γ^(2-k)  where γ ≈ 5
+```
+
+This assigns weight **1** to binary clauses (k=2), weight **0.2** to ternary clauses (k=3), weight **0.04** to quaternary clauses (k=4), and so forth. The exact weights used in OKsolver are γ₂ = 1, γ₃ = 0.2, γ₄ = 0.05, γ₅ = 0.01, γ₆ = 0.003, with a linear regression fit for k ≥ 7 [Heule & van Maaren, 2009].
+
+The choice of **base 5** emerged from empirical optimization on random k-SAT benchmarks rather than purely theoretical considerations. Kullmann's experiments showed that binary clauses are approximately **5× more constraining** than ternary clauses in terms of their contribution to unit propagation power [Kullmann, 2009]. The satz solver [Li & Anbulagan, 1997] and kcnfs solver [Dequen & Dubois, 2006] independently converged on this same factor. However, march_hi uses γ = 3.3 as the relative weight after finding this empirically optimal for recursive weight heuristics [Heule & van Maaren, 2008].
+
+The complete CRH formula computes:
+
+```
+CRH(xᵢ) := Σ_{k≥2} γₖ · |F[xᵢ = 1]_k \ F|
+```
+
+where F[xᵢ = 1]_k \ F denotes newly created clauses of size k during lookahead on xᵢ [Heule & van Maaren, 2009].
+
+## 2. Product Combination: Why Multiplication Balances Trees
+
+The hallmark of lookahead variable selection is combining the reduction scores from both polarities using multiplication:
+
+```
+score(x) = DIFF(F, F[x=0]) × DIFF(F, F[x=1])
+```
+
+The **posit** solver [Freeman, 1995] introduced a weighted variant: H(x) = 1024 × L × R + L + R, where L and R are the reduction scores for false and true respectively. The factor 1024 prioritizes the product for primary ranking while the sum provides tie-breaking [Heule & van Maaren, 2009].
+
+The theoretical justification for preferring product over sum derives from the **tree-balancing objective**. Consider two variables with scores (8, 2) and (5, 5):
+
+- Sum ranking: 8+2 = 10, 5+5 = 10 (tie)
+- Product ranking: 8×2 = 16, 5×5 = 25 (second variable wins)
+
+The product heuristic favors the balanced variable (5, 5) because it creates subtrees of similar difficulty. Under an independence assumption—where the two branches behave somewhat independently—maximizing p₁ × p₂ minimizes expected search tree size. By the AM-GM inequality, this product is maximized when p₁ ≈ p₂, creating balanced subtrees of depth log₂(n) rather than linear depth [Kullmann, 2009].
+
+The connection to **τ-function theory** [Kullmann & Luckhardt, 1999] provides rigorous grounding: the product heuristic corresponds to analyzing branching via the τ-function, which characterizes the optimal balance point for tree-based algorithms [Kullmann, 2009].
+
+## 3. Pre-Selection: Reducing Lookahead Overhead
+
+Full lookahead is expensive—O(n·m) per decision—so March uses pre-selection to identify a subset P of candidate variables before performing complete evaluation. The **CRA (Clause Reduction Approximation)** heuristic estimates reduction scores cheaply [Heule et al., 2004]:
+
+```
+CRA(x) := [Σ_{(x∨yᵢ)∈F} #>2(¬yᵢ)] × [Σ_{(¬x∨yᵢ)∈F} #>2(¬yᵢ)]
+```
+
+Here, #>2(xᵢ) counts occurrences of literal xᵢ in clauses with size > 2. The intuition: variables co-occurring with ¬x in binary clauses approximate the variables that would be assigned during lookahead on x [Heule et al., 2004]. CRA uses the product combination, mirroring the full heuristic.
+
+The **RankAdapt** strategy dynamically adjusts pre-selection size based on failed literal detection [Heule & van Maaren, 2006]:
+
+```
+RankAdaptₙ := L + (S/n) × Σᵢ₌₁ⁿ #failedᵢ
+```
+
+With L = 5 (lower bound) and S = 7 (sensitivity), march_eq expands the pre-selected set when many failed literals are detected, indicating that deeper lookahead is valuable at that search node [Heule et al., 2004].
+
+## 4. Double Lookahead and Failed Literal Detection
+
+When a single-level lookahead produces many new binary clauses, March triggers **double lookahead** to explore two levels of propagation [Heule & van Maaren, 2007]. The trigger threshold varies by solver:
+
+- **satz**: Static threshold Δ_trigger = 65 [Li & Anbulagan, 1997]
+- **kcnfs**: Dynamic threshold Δ_trigger = 0.175 × #vars + 5 [Dequen & Dubois, 2006]
+- **march_dl**: Adaptive threshold starting at 0, updated based on prior double lookahead outcomes [Heule & van Maaren, 2006]
+
+The double lookahead algorithm performs:
+
+```
+DoubleLook(F'):
+  for each preselected variable y in F':
+    if lookahead(y) results in conflict: return SUCCESS
+    if lookahead(¬y) results in conflict: return SUCCESS
+  return UNSUCCESSFUL
+```
+
+Success indicates that x (the first-level variable) is a failed literal. When unsuccessful, binary clauses ¬x ∨ ¬y are learned for each failed literal y detected at level 2 [Heule & van Maaren, 2009].
+
+**Failed literal detection** is central to lookahead solvers: if F[x=1] derives a conflict through unit propagation, then x is a failed literal and ¬x is immediately forced. When both x and ¬x are failed, the formula is unsatisfiable at that node [Heule & van Maaren, 2009].
+
+**Equivalent literal detection** (used in march_eq) extends this reasoning: if lookahead on x implies y, and later lookahead on ¬x also implies y, then y is **necessarily assigned** regardless of x. Binary equivalences xᵢ ↔ xⱼ are detected and exploited through specialized data structures [Heule & van Maaren, 2005].
+
+## 5. Direction Selection: Which Branch to Explore First
+
+After choosing variable x, the solver must decide whether to set x=true or x=false first. Two complementary strategies exist [Heule & van Maaren, 2008]:
+
+**Strategy A (posit)**: Prefer the branch requiring least computational time—select the branch with smaller expected solving effort [Freeman, 1995].
+
+**Strategy B (kcnfs, march, OKsolver)**: Prefer the most satisfiable branch—select the direction more likely to lead to a solution [Heule & van Maaren, 2008].
+
+March implements Strategy B by preferring F[x=1] if DIFF(F, F[x=1]) < DIFF(F, F[x=0]). Smaller reduction indicates less constraint tightening, suggesting higher probability of satisfiability [Heule & van Maaren, 2008]. The march_ks hybrid uses Strategy B when DIFF ratios are comparable (0.1 ≤ ratio ≤ 10) and Strategy A otherwise.
+
+This direction choice creates **biased solution distribution** where solutions concentrate in "left branches." Advanced Limited Discrepancy Search (ALDS) exploits this by visiting subtrees in order of discrepancy count—right-branch choices—finding solutions faster when combined with effective direction heuristics [Heule & van Maaren, 2008].
+
+## 6. Cube-and-Conquer: Hybrid Lookahead-CDCL Solving
+
+**Cube-and-conquer (C&C)**, introduced by Heule, Kullmann, Wieringa, and Biere [Heule et al., 2012], combines the complementary strengths of lookahead and CDCL solvers. The cubing phase uses lookahead to partition the search space into thousands to millions of subproblems (cubes), while the conquering phase solves each subproblem with CDCL.
+
+A **cube** is a conjunction of literals representing decisions from root to cutoff in the lookahead tree. For formula F, cubes partition it into subformulas: F₁ := F ∧ (x₅ ∧ x₇ ∧ ¬x₈), F₂ := F ∧ (x₅ ∧ x₇ ∧ x₈ ∧ x₂), etc. The disjunction of all cubes forms a tautology, ensuring completeness [Heule et al., 2012].
+
+The **cutoff heuristic** determines when to stop cubing. The primary metric uses:
+
+```
+|φ_dec| · |φ_dec ∪ φ_imp| > θ · |vars(F)|
+```
+
+where φ_dec contains decision literals, φ_imp contains implied literals (from BCP and failed literal detection), and θ is a dynamic threshold [Heule et al., 2012]. The CreateCubes* algorithm adjusts θ dynamically:
+
+```
+CreateCubes*(F, A, C, φ_dec, φ_imp):
+  θ := 1.05 · θ                              // Increment 5% at each node
+  ⟨F, φ_imp⟩ := LAsimplify_and_learn(F, φ_dec, φ_imp)
+  if conflict or |φ_dec| > 20:
+    θ := 0.7 · θ                             // Decrement 30%
+  if conflict: return ⟨A, C ∪ {¬φ_dec}⟩
+  if |φ_dec| · |φ_dec ∪ φ_imp| > θ · |vars(F)|:
+    return ⟨A ∪ {φ_dec}, C⟩                  // Cutoff: store cube
+  l_dec := LAdecide(F, φ_dec, φ_imp)         // Lookahead variable selection
+  ⟨A, C⟩ := CreateCubes*(F, A, C, φ_dec ∪ {l_dec}, φ_imp)
+  return CreateCubes*(F, A, C, φ_dec ∪ {¬l_dec}, φ_imp)
+```
+
+The decrement on conflict reflects that if lookahead finds a conflict, CDCL likely would have found it faster with a smaller conflict reason. The depth limit (|φ_dec| > 20) prevents excessive cube depth. Initial θ = 1000 is robust to ±10× changes [Heule et al., 2012].
+
+The most famous application of cube-and-conquer is the solution of the **Boolean Pythagorean Triples problem** [Heule, Kullmann & Marek, 2016]. This proof used lookahead to generate approximately 40,000 cubes, which were solved in parallel on 800 cores over about 2 days, producing a 200-terabyte DRAT proof.
+
+## 7. Cube Variables and Backdoor Sets
+
+Cube variables relate closely to **backdoor sets**—small variable sets whose assignment makes the remaining formula tractable. Williams, Gomes, and Selman [2003] introduced the concept: a **strong backdoor** B is a set where for all assignments τ to B, the remaining formula F|τ is solvable in polynomial time by some sub-solver. A **weak backdoor** requires only that some assignment yields tractability.
+
+Cube-and-conquer implicitly approximates strong backdoors: cube variables partition the problem such that all resulting subproblems are "easy" for CDCL [Heule et al., 2012]. The key observation is that problem hardness correlates with strong backdoor size—instances with small backdoors are efficiently solvable [Williams, Gomes & Selman, 2003].
+
+Real-world instances have remarkably tiny backdoors [Williams, Gomes & Selman, 2003]:
+
+| Instance | Total Variables | Backdoor Size | Fraction |
+|----------|----------------|---------------|----------|
+| logistics.d | 6,783 | 12 | 0.18% |
+| 3bitadd_32 | 8,704 | 53 | 0.61% |
+| pipe_01 | 7,736 | 23 | 0.30% |
+
+The computational complexity of backdoor detection differs by type: strong backdoor detection for Horn and 2-CNF is FPT (fixed-parameter tractable) [Nishimura, Ragde & Szeider, 2004], while weak backdoor detection is W[2]-hard for these classes [Szeider, 2005].
+
+**ρ-backdoors** [Semenov et al., 2022] generalize to probabilistic settings: set B is a ρ-backdoor if fraction ρ of assignments to B result in subproblems solvable by unit propagation alone. This connects to the random restarts in DPLL algorithms.
+
+## 8. Connections to Model Counting and Sampling
+
+Variable selection for model counting (#SAT) differs fundamentally from satisfiability testing. In SAT, we seek one solution quickly; in counting, we must account for all solutions. The Cachet counter [Sang et al., 2004] introduced **component caching** combined with clause learning, demonstrating that DPLL-style search could be competitive for counting. The **VSADS** heuristic interpolates between conflict-driven and frequency-based scoring [Sang, Beame & Kautz, 2005]:
+
+```
+score(x) = α × VSIDS(x) + (1-α) × freq(x)
+```
+
+The frequency component helps identify structurally important variables, while the activity component focuses on constraint-heavy regions.
+
+Modern counters like **SharpSAT-TD** [Korhonen & Järvisalo, 2021] exploit treewidth through tree decomposition-based variable ordering:
+
+```
+score(x) = C × TD_score(x) + freq(x) + act(x)
+```
+
+where C = 100 × exp(n/w)/n with w = treewidth [Korhonen & Järvisalo, 2023]. The complexity of #SAT is O(2^k × n²) where k is treewidth, so variable orderings that minimize residual treewidth dramatically improve counting efficiency.
+
+**Component caching** is central to counting [Sang et al., 2004]: if the constraint graph decomposes into disjoint components G₁,...,Gₖ after partial assignment, then #F = #F₁ × #F₂ × ... × #Fₖ. Variable selection should create independent subproblems early and minimize separator variables.
+
+For **approximate model counting**, ApproxMC [Chakraborty, Meel & Vardi, 2013] provides (ε, δ)-guarantees using XOR constraints as hash functions. The SaturatingCounter algorithm iteratively adds XOR constraints until the cell size falls within a target range:
+
+```
+ApproxMCCore(F, ε, δ):
+  pivot = ⌈2 × (1 + 1/ε)²⌉
+  for i = 1 to n:
+    h ← random from H_xor(n, i, 3)
+    Y = BoundedSAT(F ∧ h⁻¹(0), pivot)
+    if 0 < |Y| < pivot:
+      return |Y| × 2^i
+  return 2^n
+```
+
+The underlying SAT solver (typically CryptoMiniSat [Soos, Nohl & Castelluccia, 2009] with Gauss-Jordan elimination) must efficiently handle CNF-XOR combinations, requiring integration of XOR reasoning with CDCL conflict analysis [Chakraborty, Meel & Vardi, 2013].
+
+**Uniform sampling** connects to counting through the Jerrum-Valiant-Vazirani theorem [Jerrum, Valiant & Vazirani, 1986]: almost-uniform sampling and approximate counting are polynomially equivalent. UniGen [Chakraborty et al., 2013, 2015] achieves near-uniform sampling by partitioning the solution space with XOR constraints, then sampling uniformly from appropriately-sized cells:
+
+```
+GenerateSamples(F, i, loThresh):
+  h ← random XOR constraints
+  solutions = BoundedSAT(F ∧ h⁻¹(0), hiThresh)
+  if loThresh ≤ |solutions| < hiThresh:
+    return random element from solutions
+```
+
+UniGen2 [Chakraborty et al., 2015] achieved 20× speedup and near-linear parallel scaling by exploiting statistical properties of XOR hashing.
+
+Cube-and-conquer extends to counting: each cube defines a disjoint subproblem, so #F = Σ_{cubes c} #(F ∧ c). The march_cu solver includes a -# flag for #SAT-optimized cube generation that targets balanced counting subproblems [Heule et al., 2012].
+
+## 9. Theoretical Foundations and Complexity
+
+The product heuristic's tree-balancing property has formal grounding in the **τ-function theory** [Kullmann & Luckhardt, 1999]. For branching algorithms, the complexity bound depends on τ(d₁, d₂) where d₁ and d₂ are branch "difficulties." The optimal branching achieves τ^n iterations where τ satisfies τ^(-d₁) + τ^(-d₂) = 1. Balanced branching (d₁ ≈ d₂) minimizes τ [Kullmann, 2009].
+
+The exponential weighting approximates **unit propagation power** and relates to **resolution width**. Shorter clauses participate in shorter resolution proofs and have higher probability of becoming unit clauses after few assignments [Heule & van Maaren, 2009]. The theoretical bound for random k-SAT at the phase transition shows expected tree size O(c^n) with c < 2 for optimal heuristics, compared to c = 2 for random branching.
+
+Comparison with VSIDS [Moskewicz et al., 2001] reveals complementary strengths:
+
+| Aspect | Lookahead | VSIDS (CDCL) |
+|--------|-----------|--------------|
+| Cost per decision | O(n·m) | O(1) |
+| Information scope | Global formula structure | Local conflict history |
+| Best problem class | Hard, small instances | Large industrial instances |
+| Tree construction | Balanced, minimal | Conflict-driven, restartable |
+
+This complementarity motivates cube-and-conquer: lookahead provides global analysis for initial partitioning while CDCL exploits conflict learning within subproblems [Heule et al., 2012].
+
+Fixed-parameter tractability results connect backdoors to counting complexity [Szeider, 2005]:
+
+| Parameter | SAT | #SAT |
+|-----------|-----|------|
+| Treewidth k | O(2^k × n) | O(2^k × n²) |
+| Strong backdoor size k | O(2^k × poly(n)) | O(2^k × poly(n)) |
+
+## References
+
+**Lookahead Solvers and Variable Selection**
+
+- Heule, M.J.H. & van Maaren, H. (2009). Look-Ahead Based SAT Solvers. Chapter 5, *Handbook of Satisfiability*, IOS Press. https://www.cs.utexas.edu/~marijn/publications/p01c05_lah.pdf
+
+- Heule, M.J.H., Dufour, M., van Zwieten, J. & van Maaren, H. (2004). March_eq: Implementing Additional Reasoning into an Efficient Look-Ahead SAT Solver. *SAT 2004*, LNCS 3542, pp. 345-359. Springer. https://link.springer.com/chapter/10.1007/11527695_26
+
+- Heule, M.J.H. & van Maaren, H. (2006). March_dl: Adding Adaptive Heuristics and a New Branching Strategy. *Journal on Satisfiability, Boolean Modelling and Computation*, 2:47-59.
+
+- Heule, M.J.H. & van Maaren, H. (2005). Aligning CNF- and Equivalence-Reasoning. *SAT 2004*, LNCS 3542, pp. 145-156. Springer.
+
+- Heule, M.J.H. & van Maaren, H. (2007). Effective Incorporation of Double Look-Ahead Procedures. *SAT 2007*, LNCS 4501, pp. 258-271. Springer.
+
+- Heule, M.J.H. & van Maaren, H. (2008). Whose Side Are You On? Finding Solutions in a Biased Search-Tree. *Journal on Satisfiability, Boolean Modelling and Computation*, 4:117-148.
+
+- Kullmann, O. (2009). Fundaments of Branching Heuristics. Chapter 7, *Handbook of Satisfiability*, IOS Press.
+
+- Kullmann, O. & Luckhardt, H. (1999). Deciding propositional tautologies: Algorithms and their complexity. *Information and Computation*, 148(1).
+
+- Li, C.M. & Anbulagan (1997). Heuristics Based on Unit Propagation for Satisfiability Problems. *IJCAI 1997*, pp. 366-371.
+
+- Freeman, J.W. (1995). Improvements to Propositional Satisfiability Search Algorithms. PhD thesis, University of Pennsylvania.
+
+- Dequen, G. & Dubois, O. (2006). kcnfs: An efficient solver for random k-SAT formulae. *SAT 2006*.
+
+**Cube-and-Conquer**
+
+- Heule, M.J.H., Kullmann, O., Wieringa, S. & Biere, A. (2012). Cube and Conquer: Guiding CDCL SAT Solvers by Lookaheads. *HVC 2011*, LNCS 7261, pp. 50-65. Springer. https://link.springer.com/chapter/10.1007/978-3-642-34188-5_8
+
+- Heule, M.J.H., Kullmann, O. & Marek, V.W. (2016). Solving and Verifying the Boolean Pythagorean Triples Problem via Cube-and-Conquer. *SAT 2016*, LNCS 9710, pp. 228-245. Springer. (Best Paper Award) https://arxiv.org/abs/1605.00723
+
+**Backdoors**
+
+- Williams, R., Gomes, C. & Selman, B. (2003). Backdoors to Typical Case Complexity. *IJCAI 2003*, pp. 1173-1178. https://www.ijcai.org/Proceedings/03/Papers/168.pdf
+
+- Szeider, S. (2005). Backdoor Sets for DLL Subsolvers. *Journal of Automated Reasoning*, 35:73-88.
+
+- Nishimura, N., Ragde, P. & Szeider, S. (2004). Detecting Backdoor Sets with Respect to Horn and Binary Clauses. *SAT 2004*.
+
+- Semenov, A., Pavlenko, A., Chivilikhin, D. & Kochemazov, S. (2022). On Probabilistic Generalization of Backdoors in Boolean Satisfiability. *AAAI 2022*.
+
+**Model Counting**
+
+- Sang, T., Bacchus, F., Beame, P., Kautz, H. & Pitassi, T. (2004). Combining Component Caching and Clause Learning for Effective Model Counting. *SAT 2004*. https://www.cs.toronto.edu/~fbacchus/Papers/SangetalSAT2004.pdf
+
+- Sang, T., Beame, P. & Kautz, H. (2005). Heuristics for Fast Exact Model Counting. *SAT 2005*, LNCS 3569, pp. 226-240. Springer.
+
+- Thurley, M. (2006). sharpSAT – Counting Models with Advanced Component Caching and Implicit BCP. *SAT 2006*, LNCS 4121, pp. 424-429. Springer.
+
+- Korhonen, T. & Järvisalo, M. (2021). Integrating Tree Decompositions into Decision Heuristics of Propositional Model Counters. *CP 2021*, LIPIcs 210, pp. 8:1-8:11.
+
+- Korhonen, T. & Järvisalo, M. (2023). SharpSAT-TD in Model Counting Competitions 2021-2023. arXiv:2308.15819. https://arxiv.org/abs/2308.15819
+
+**Approximate Counting and Sampling**
+
+- Chakraborty, S., Meel, K.S. & Vardi, M.Y. (2013). A Scalable Approximate Model Counter. *CP 2013*, LNCS 8124, pp. 200-216. Springer. https://arxiv.org/abs/1306.5726
+
+- Chakraborty, S., Fremont, D.J., Meel, K.S., Seshia, S.A. & Vardi, M.Y. (2015). On Parallel Scalable Uniform SAT Witness Generation. *TACAS 2015*, LNCS 9035, pp. 304-319. Springer.
+
+- Chakraborty, S., Meel, K.S. & Vardi, M.Y. (2013). A Scalable and Nearly Uniform Generator of SAT Witnesses. *CAV 2013*, LNCS 8044, pp. 608-623. Springer.
+
+- Soos, M., Nohl, K. & Castelluccia, C. (2009). Extending SAT Solvers to Cryptographic Problems. *SAT 2009*, LNCS 5584. Springer.
+
+- Jerrum, M., Valiant, L. & Vazirani, V. (1986). Random Generation of Combinatorial Structures from a Uniform Distribution. *Theoretical Computer Science*, 43:169-188.
+
+**CDCL and Related**
+
+- Moskewicz, M.W., Madigan, C.F., Zhao, Y., Zhang, L. & Malik, S. (2001). Chaff: Engineering an Efficient SAT Solver. *DAC 2001*, pp. 530-535.
+
+- Davis, M., Logemann, G. & Loveland, D. (1962). A Machine Program for Theorem-Proving. *Communications of the ACM*, 5(7):394-397.
