@@ -78,3 +78,6 @@ uv.lock
 
 # Claude Code
 .claude/
+
+# Benchmark data (download with benchmarks/download.py)
+benchmarks/data/
