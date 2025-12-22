@@ -1,7 +1,7 @@
 # Build the project
 build:
     uv sync --all-extras
-    uv pip install -e . --no-build-isolation --force-reinstall
+    SKBUILD_BUILD_DIR=build uv pip install -e . --no-build-isolation --force-reinstall -v
 
 # Build with coverage instrumentation
 build-coverage:

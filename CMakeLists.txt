@@ -102,3 +102,16 @@ target_link_libraries(_test_internals PRIVATE amc_core)
 install(TARGETS _test_internals
     LIBRARY DESTINATION tests
 )
+
+# Tool executables
+add_executable(test_backbone_unknown tools/test_backbone_unknown.cpp)
+target_link_libraries(test_backbone_unknown PRIVATE amc_core)
+
+add_executable(test_initial_unknown tools/test_initial_unknown.cpp)
+target_link_libraries(test_initial_unknown PRIVATE amc_core)
+
+add_executable(test_table_unknown tools/test_table_unknown.cpp)
+target_link_libraries(test_table_unknown PRIVATE amc_core)
+
+add_executable(analyze_cnf tools/analyze_cnf.cpp)
+target_link_libraries(analyze_cnf PRIVATE amc_core)
