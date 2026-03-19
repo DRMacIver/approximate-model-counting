@@ -78,5 +78,15 @@ uv.lock
 # Claude Code
 .claude/
 
+# Scratch/experimental files
+scratch/
+
 # Benchmark data (download with benchmarks/download.py)
 benchmarks/data/
+
+# claude-reliability managed
+.claude/bin/
+.claude/*.local.md
+.claude/*.local.json
+.claude/*.local
+.claude-reliability/
