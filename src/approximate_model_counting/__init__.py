@@ -2,22 +2,26 @@
 
 from ._approximate_model_counting import (  # pyright: ignore[reportMissingModuleSource]
     BooleanEquivalence,
+    DecompositionNode,
     ModelCounter,
     RefinablePartition,
     SolutionInformation,
     SolutionTable,
     Status,
+    VariableInteractionGraph,
     find_solution,
     is_satisfiable,
 )
 
 __all__ = [
     "BooleanEquivalence",
+    "DecompositionNode",
     "ModelCounter",
     "RefinablePartition",
     "SolutionInformation",
     "SolutionTable",
     "Status",
+    "VariableInteractionGraph",
     "find_solution",
     "is_satisfiable",
 ]

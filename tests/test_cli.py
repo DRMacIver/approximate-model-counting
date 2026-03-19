@@ -80,6 +80,11 @@ class TestCollectCnfFiles:
         result = collect_cnf_files((str(empty_dir),))
         assert result == []
 
+    def test_nonexistent_path_skipped(self, temp_dir: Path):
+        """A path that is neither file nor directory is skipped."""
+        result = collect_cnf_files((str(temp_dir / "nonexistent"),))
+        assert result == []
+
 
 class TestBuildSolutionInfo:
     """Tests for build_solution_info."""
@@ -130,6 +135,15 @@ class TestProcessFile:
 
         assert result["status"] == "UNSATISFIABLE"
         assert result["samples"] == []
+
+    def test_satisfiable_all_backbone(self, temp_dir: Path):
+        """SAT formula where all variables are backbone."""
+        cnf_path = temp_dir / "all_backbone.cnf"
+        cnf_path.write_text("p cnf 3 3\n1 0\n2 0\n3 0\n")
+        result = process_file(cnf_path, seed=42)
+
+        assert result["status"] == "SATISFIABLE"
+        assert sorted(result["root"]["backbone"]) == [1, 2, 3]
 
     def test_deterministic_with_seed(self, sample_cnf: Path):
         result1 = process_file(sample_cnf, seed=42)

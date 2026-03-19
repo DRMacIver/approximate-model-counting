@@ -63,9 +63,7 @@ class TestSpecificCoverageScenarios:
 
     def test_empty_formula(self) -> None:
         """Empty formula has trivial solution."""
-        mc = ModelCounter.from_file(
-            str(Path(__file__).parent / "coverage_data" / "empty.cnf")
-        )
+        mc = ModelCounter.from_file(str(Path(__file__).parent / "coverage_data" / "empty.cnf"))
         info = mc.with_assumptions([])
         assert info.solvable() == Status.SATISFIABLE
         # Empty formula should have empty backbone (no forced literals)
@@ -157,9 +155,7 @@ class TestSpecificCoverageScenarios:
 
     def test_backbone_with_free_vars(self) -> None:
         """Formula with forced and free variables."""
-        mc = ModelCounter.from_file(
-            str(Path(__file__).parent / "coverage_data" / "backbone.cnf")
-        )
+        mc = ModelCounter.from_file(str(Path(__file__).parent / "coverage_data" / "backbone.cnf"))
         info = mc.with_assumptions([])
         assert info.solvable() == Status.SATISFIABLE
         backbone = info.get_backbone()
@@ -185,9 +181,7 @@ class TestSpecificCoverageScenarios:
         import pytest
 
         with pytest.raises(RuntimeError, match="Failed to read DIMACS file"):
-            ModelCounter.from_file(
-                str(Path(__file__).parent / "coverage_data" / "invalid.txt")
-            )
+            ModelCounter.from_file(str(Path(__file__).parent / "coverage_data" / "invalid.txt"))
 
     def test_large_table_size_limit(self) -> None:
         """Test that large table triggers MAX_TABLE_SIZE limit."""

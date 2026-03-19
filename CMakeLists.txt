@@ -1,4 +1,19 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Fix SDK path on macOS when CMake computes a non-existent SDK version.
+# This happens with older CMake versions on newer macOS releases.
+if(APPLE AND NOT DEFINED CMAKE_OSX_SYSROOT)
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE _sdk_path
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(_sdk_path)
+        set(CMAKE_OSX_SYSROOT "${_sdk_path}" CACHE PATH "macOS SDK path")
+    endif()
+endif()
+
 project(approximate_model_counting VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -53,6 +68,18 @@ target_include_directories(cadical PUBLIC ${cadical_SOURCE_DIR}/src)
 target_compile_options(cadical PRIVATE -w)  # Suppress CaDiCaL warnings
 target_compile_definitions(cadical PRIVATE NCLOSEFROM)  # Disable closefrom (not available on macOS)
 
+# Fetch igraph
+FetchContent_Declare(
+    igraph
+    GIT_REPOSITORY https://github.com/igraph/igraph.git
+    GIT_TAG 0.10.15
+    GIT_SHALLOW TRUE
+)
+# Disable igraph features we don't need
+set(IGRAPH_ENABLE_TLS OFF CACHE BOOL "" FORCE)
+set(IGRAPH_ENABLE_LTO OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(igraph)
+
 # Fetch pybind11
 FetchContent_Declare(
     pybind11
@@ -69,6 +96,7 @@ add_library(amc_core STATIC
     src/refinable_partition.cpp
     src/solution_information.cpp
     src/solution_table.cpp
+    src/variable_interaction_graph.cpp
 )
 
 target_compile_options(amc_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -78,7 +106,7 @@ target_include_directories(amc_core PUBLIC
     ${cadical_SOURCE_DIR}/src
 )
 
-target_link_libraries(amc_core PUBLIC cadical)
+target_link_libraries(amc_core PUBLIC cadical igraph)
 
 # Python bindings
 pybind11_add_module(_approximate_model_counting

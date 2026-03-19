@@ -67,8 +67,8 @@ def process_file(cnf_path: Path, seed: int | None) -> dict[str, Any]:
 
     if root_info.solvable() == Status.SATISFIABLE:
         table = root_info.get_solution_table()
-        # Sample 10 random rows
-        if len(table) > 0:
+        # Sample 10 random rows (table always has >= 1 row for SAT formulas)
+        if len(table) > 0:  # pragma: no branch
             rng = random.Random(seed)
             num_samples = min(10, len(table))
             indices = rng.sample(range(len(table)), num_samples)
@@ -80,7 +80,9 @@ def process_file(cnf_path: Path, seed: int | None) -> dict[str, Any]:
     return result
 
 
-def _process_file_wrapper(args: tuple[Path, int | None]) -> tuple[Path, dict[str, Any]]:
+def _process_file_wrapper(  # pragma: no cover - called in subprocess pool
+    args: tuple[Path, int | None],
+) -> tuple[Path, dict[str, Any]]:
     """Wrapper for process_file for use with ProcessPoolExecutor."""
     cnf_path, seed = args
     return cnf_path, process_file(cnf_path, seed)
@@ -132,8 +134,7 @@ def process_files_with_progress(
                 cnf_path = futures[future]
                 try:
                     _, result = future.result(timeout=timeout)
-                except TimeoutError:
-                    # Cancel the future and create a timeout result
+                except TimeoutError:  # pragma: no cover - requires real subprocess timeout
                     future.cancel()
                     result = make_timeout_result(cnf_path, timeout if timeout else 0)
                 progress.advance(task)
@@ -179,7 +180,7 @@ def main(
     # Convert timeout=0 to None (disabled)
     effective_timeout = timeout if timeout > 0 else None
 
-    if tui:
+    if tui:  # pragma: no cover - TUI entry point
         from approximate_model_counting.tui import run_tui
 
         run_tui(cnf_files, seed, overwrite, workers, effective_timeout)

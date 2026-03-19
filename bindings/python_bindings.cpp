@@ -6,6 +6,7 @@
 #include "solution_information.hpp"
 #include "solution_table.hpp"
 #include "utils.hpp"
+#include "variable_interaction_graph.hpp"
 
 namespace py = pybind11;
 
@@ -93,4 +94,22 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
              "Get which partition an element is in")
         .def("mark", &RefinablePartition::mark, py::arg("values"),
              "Refine partitions by marking values");
+
+    py::class_<amc::DecompositionNode>(m, "DecompositionNode")
+        .def_readonly("variables", &amc::DecompositionNode::variables)
+        .def_readonly("separator", &amc::DecompositionNode::separator)
+        .def_readonly("children", &amc::DecompositionNode::children)
+        .def("is_leaf", &amc::DecompositionNode::is_leaf);
+
+    py::class_<amc::VariableInteractionGraph>(m, "VariableInteractionGraph")
+        .def(py::init<const std::vector<std::vector<int>>&>(), py::arg("clauses"))
+        .def("variables", &amc::VariableInteractionGraph::variables)
+        .def("num_edges", &amc::VariableInteractionGraph::num_edges)
+        .def("decompose", &amc::VariableInteractionGraph::decompose, py::arg("n") = 20)
+        .def("find_separator", &amc::VariableInteractionGraph::find_separator, py::arg("scope"),
+             py::arg("excluded"), py::arg("n"))
+        .def("enlarge_separator", &amc::VariableInteractionGraph::enlarge_separator,
+             py::arg("current_separator"), py::arg("scope"), py::arg("excluded"), py::arg("n"))
+        .def("connected_components", &amc::VariableInteractionGraph::connected_components,
+             py::arg("scope"), py::arg("excluded"));
 }

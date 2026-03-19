@@ -182,3 +182,57 @@ class RefinablePartition:
         that contains both marked and unmarked elements.
         """
         ...
+
+class DecompositionNode:
+    """A node in a decomposition tree of a variable interaction graph."""
+
+    variables: list[int]
+    """All variables at this node."""
+    separator: list[int]
+    """The split variables (empty for leaves)."""
+    children: list[DecompositionNode]
+    """One child per component (empty for leaves)."""
+    def is_leaf(self) -> bool:
+        """Return True if this is a leaf node (no children)."""
+        ...
+
+class VariableInteractionGraph:
+    """Graph where variables are nodes and edges connect variables sharing a clause."""
+
+    def __init__(self, clauses: list[list[int]]) -> None:
+        """Build VIG from clauses.
+
+        Extracts variables and creates edges between variables sharing a clause.
+        """
+        ...
+    def variables(self) -> list[int]:
+        """Get the sorted list of variables in the graph."""
+        ...
+    def num_edges(self) -> int:
+        """Get the number of edges in the graph."""
+        ...
+    def decompose(self, n: int = 20) -> DecompositionNode:
+        """Recursively decompose until components have at most n variables."""
+        ...
+    def find_separator(self, scope: list[int], excluded: set[int], n: int) -> list[int]:
+        """Find the best n separator variables from scope.
+
+        Variables in excluded are treated as already removed.
+        """
+        ...
+    def enlarge_separator(
+        self,
+        current_separator: list[int],
+        scope: list[int],
+        excluded: set[int],
+        n: int,
+    ) -> list[int]:
+        """Enlarge an existing separator to target size n.
+
+        Returns current_separator plus the best additional variables,
+        chosen by the same ranking as find_separator.
+        """
+        ...
+    def connected_components(self, scope: list[int], excluded: set[int]) -> list[list[int]]:
+        """Get connected components of scope after removing excluded variables."""
+        ...

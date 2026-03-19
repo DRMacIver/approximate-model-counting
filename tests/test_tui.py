@@ -182,9 +182,7 @@ class TestProcessingLogic:
 
         results = {}
         with ProcessPoolExecutor(max_workers=2) as executor:
-            futures = {
-                executor.submit(_process_file_wrapper, (f, 42)): f for f in cnf_files
-            }
+            futures = {executor.submit(_process_file_wrapper, (f, 42)): f for f in cnf_files}
             for future in as_completed(futures):
                 path, result = future.result(timeout=30)
                 results[path] = result
@@ -484,6 +482,14 @@ class TestFormatIntList:
         assert "1, 2, 3" in result  # First items present
         assert "100" not in result or "100 total" in result  # 100 only in total count
 
+    def test_no_truncate_when_few_hidden(self):
+        """Don't truncate when hiding < 5 items (not worth the '...' noise)."""
+        lst = list(range(1, 13))  # 12 items
+        result = format_int_list(lst, max_items=10)
+        # Only hiding 2, so should show all 12
+        assert "total" not in result
+        assert "12" in result
+
 
 class TestFormatFileStatus:
     """Tests for format_file_status formatting (top-level status)."""
@@ -565,3 +571,27 @@ class TestFormatSolutionInfo:
         result = format_solution_info(info)
         assert "Backbone (0 literals)" in result
         assert "(none)" in result
+
+    def test_include_samples(self):
+        info = {
+            "backbone": [1],
+            "equivalence_classes": [],
+            "table_variables": [],
+            "table_size": 0,
+            "sample_rows": [[1, -2], [1, 2]],
+        }
+        result = format_solution_info(info, include_samples=True)
+        assert "Sample rows (2)" in result
+        assert "1, -2" in result
+
+    def test_include_samples_empty(self):
+        info = {
+            "backbone": [],
+            "equivalence_classes": [],
+            "table_variables": [],
+            "table_size": 0,
+            "sample_rows": [],
+        }
+        result = format_solution_info(info, include_samples=True)
+        # Empty samples should not add a samples section
+        assert "Sample rows" not in result

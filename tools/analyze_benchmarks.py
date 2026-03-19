@@ -7,7 +7,7 @@ import sys
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from statistics import mean, median, stdev
+from statistics import mean, median
 
 
 def analyze_file(cnf_path: Path, analyzer_path: Path, timeout: int = 60) -> dict | None:
@@ -50,7 +50,6 @@ def categorize(data: dict) -> list[str]:
 
     # Size categories
     vars = data.get("variables", 0)
-    clauses = data.get("clauses", 0)
     if vars < 100:
         categories.append("tiny")
     elif vars < 1000:
@@ -173,11 +172,13 @@ def generate_summary(all_results: list[dict], output_path: Path):
     large_bb = by_category.get("large-backbone", [])
     if large_bb:
         lines.append("\n### Large Backbone (>50% of variables)\n")
-        for r in sorted(large_bb, key=lambda x: -x.get("backbone_size", 0) / max(x.get("variables", 1), 1))[:20]:
+        for r in sorted(
+            large_bb, key=lambda x: -x.get("backbone_size", 0) / max(x.get("variables", 1), 1)
+        )[:20]:
             name = Path(r["file"]).name
             bb = r.get("backbone_size", 0)
             vars = r.get("variables", 1)
-            lines.append(f"- `{name}`: backbone={bb}/{vars} ({100*bb/vars:.1f}%)\n")
+            lines.append(f"- `{name}`: backbone={bb}/{vars} ({100 * bb / vars:.1f}%)\n")
 
     # Many units
     many_units = by_category.get("many-units", [])
@@ -203,17 +204,23 @@ def generate_summary(all_results: list[dict], output_path: Path):
     if successful:
         sat_count = len(by_solvability["SAT"])
         unsat_count = len(by_solvability["UNSAT"])
-        lines.append(f"The benchmark set is roughly {100*sat_count/len(successful):.0f}% satisfiable, ")
-        lines.append(f"{100*unsat_count/len(successful):.0f}% unsatisfiable.\n\n")
+        lines.append(
+            f"The benchmark set is roughly {100 * sat_count / len(successful):.0f}% satisfiable, "
+        )
+        lines.append(f"{100 * unsat_count / len(successful):.0f}% unsatisfiable.\n\n")
 
         solve_times = [r["solve_time_ms"] for r in successful if "solve_time_ms" in r]
         if solve_times:
-            lines.append(f"Solve times range from {min(solve_times):.1f}ms to {max(solve_times):.1f}ms ")
+            lines.append(
+                f"Solve times range from {min(solve_times):.1f}ms to {max(solve_times):.1f}ms "
+            )
             lines.append(f"(median {median(solve_times):.1f}ms).\n\n")
 
         densities = [r["density"] for r in successful if "density" in r]
         if densities:
-            lines.append(f"Clause/variable density ranges from {min(densities):.2f} to {max(densities):.2f} ")
+            lines.append(
+                f"Clause/variable density ranges from {min(densities):.2f} to {max(densities):.2f} "
+            )
             lines.append(f"(median {median(densities):.2f}).\n")
 
     output_path.write_text("".join(lines))
@@ -227,7 +234,9 @@ def main():
     parser.add_argument("--analyzer", type=Path, default=Path("build/analyze_cnf"))
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument("--workers", type=int, default=None)
-    parser.add_argument("--skip-existing", action="store_true", help="Skip files with existing JSON")
+    parser.add_argument(
+        "--skip-existing", action="store_true", help="Skip files with existing JSON"
+    )
     args = parser.parse_args()
 
     if not args.analyzer.exists():
