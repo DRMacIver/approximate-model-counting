@@ -1,118 +1,120 @@
 # Approximate Model Counting
 
-Approximate model counting for SAT using Monte Carlo estimation methods.
+Approximate model counting for SAT formulas using Monte Carlo estimation methods.
 
-This is a hybrid Python/C++ project that uses the CaDiCaL SAT solver for core solving functionality.
+Given a Boolean formula in CNF, this project computes structural information about the solution space: which variables are forced (backbone), which variables are equivalent, and a compact table of possible assignments. These provide lower bounds and structural insights for approximate model counting.
 
-## Requirements
+## How It Works
+
+The core analysis pipeline for a formula proceeds in four phases:
+
+1. **Satisfiability check** - determine if the formula has any solutions using CaDiCaL
+2. **Backbone detection** - find literals that must be true in every solution, using iterative counter-model search with march-style variable scoring
+3. **Equivalence detection** - find variables that always have the same (or opposite) values, using partition refinement
+4. **Solution table construction** - build a compact table of possible variable assignments by incrementally adding variables and pruning unsatisfiable rows
+
+See [docs/algorithms.md](docs/algorithms.md) for detailed algorithm descriptions.
+
+## Quick Start
+
+### Requirements
 
 - Python 3.12+
 - CMake 3.20+
 - C++20 compatible compiler
 - [uv](https://github.com/astral-sh/uv) for Python dependency management
 - [just](https://github.com/casey/just) for task running
-- clang-format for C++ formatting
-- lcov for C++ coverage reporting (install with `brew install lcov` on macOS)
 
-## Setup
-
-Install dependencies and build the project:
+### Build and Test
 
 ```bash
-just build
+just build   # Build the project (fetches CaDiCaL and pybind11 automatically)
+just test    # Run all tests
+just check   # Run all checks (format, lint, test with 100% coverage)
 ```
+
+### Usage
+
+```python
+from approximate_model_counting import ModelCounter, Status
+
+# Create from clauses
+counter = ModelCounter([[1, 2], [-1, 3], [-2, -3]], seed=42)
+
+# Or from a DIMACS CNF file
+counter = ModelCounter.from_file("formula.cnf", seed=42)
+
+# Analyze with assumptions (empty list = no assumptions)
+info = counter.with_assumptions([])
+
+if info.solvable() == Status.SATISFIABLE:
+    # Literals true in every solution
+    backbone = info.get_backbone()
+
+    # Groups of variables that always agree
+    equiv_classes = info.get_equivalence_classes()
+
+    # Compact table of possible assignments
+    table = info.get_solution_table()
+    print(f"{len(table)} possible assignment patterns")
+```
+
+### CLI
+
+```bash
+# Analyze a single file
+amc formula.cnf --seed 42
+
+# Analyze a directory of CNF files
+amc benchmarks/data/2024/ --seed 42 -j 4
+
+# Interactive TUI
+amc benchmarks/data/2024/ --tui
+```
+
+### Benchmarks
+
+Download Model Counting Competition benchmarks for testing:
+
+```bash
+cd benchmarks && python download.py
+```
+
+See [benchmarks/README.md](benchmarks/README.md) for details.
+
+## Architecture
+
+The project is a hybrid Python/C++ system. C++ handles the SAT solving and data structures via pybind11 bindings. Python provides testing (pytest + Hypothesis), CLI (click), and TUI (textual).
+
+Key C++ components:
+- **ModelCounter** - owns the CaDiCaL solver, creates `SolutionInformation` instances
+- **SolutionInformation** - lazily computes backbone, equivalences, and solution table
+- **SolutionTable** - implicit representation of possible assignments (max ~1M rows)
+- **BooleanEquivalence** - union-find tracking literal equivalences (with negation)
+- **RefinablePartition** - partition refinement for equivalence detection
+
+See [docs/architecture.md](docs/architecture.md) for a full component diagram and detailed descriptions.
 
 ## Development
 
-### Available Commands
-
-- `just build` - Build the project
-- `just test` - Run tests
-- `just test-coverage` - Run tests with coverage (requires 100% coverage for both Python and C++)
-- `just format` - Format all code (Python with ruff, C++ with clang-format)
-- `just check-format` - Check code formatting
-- `just lint` - Lint Python code
-- `just lint-fix` - Fix linting issues
-- `just clean` - Clean build artifacts
-- `just check` - Run all checks (format, lint, test with coverage)
-
-### Running Tests
-
 ```bash
-just test
+just format         # Format code (ruff for Python, clang-format for C++)
+just check-format   # Check formatting
+just lint           # Lint Python code
+just test-coverage  # Run tests with 100% coverage requirement
+just clean          # Clean build artifacts
 ```
 
-### Code Coverage
+See [docs/development.md](docs/development.md) for the full development guide.
 
-This project enforces 100% code coverage for both Python and C++:
+## Status
 
-```bash
-just test-coverage
-```
+This is an early-stage research project (v0.1.0). The core analysis pipeline works but the actual approximate counting algorithm is not yet implemented -- the current focus is on extracting structural information (backbone, equivalences, solution table) that will feed into a Monte Carlo counting approach.
 
-### Formatting
-
-Format all code:
-
-```bash
-just format
-```
-
-Check formatting:
-
-```bash
-just check-format
-```
-
-## Usage
-
-```python
-from approximate_model_counting import SolutionInformation, Status
-
-# Create a new solver instance
-si = SolutionInformation()
-
-# Add clauses (CNF formula)
-si.add_clause([1, 2])      # (x1 OR x2)
-si.add_clause([-1, 3])     # (NOT x1 OR x3)
-
-# Check satisfiability
-status = si.solvable()
-
-if status == Status.SATISFIABLE:
-    print("Formula is satisfiable")
-elif status == Status.UNSATISFIABLE:
-    print("Formula is unsatisfiable")
-else:
-    print("Unknown")
-
-# Add assumptions (temporary constraints)
-si.add_assumption(1)  # Assume x1 is true
-status = si.solvable()
-
-# Clear assumptions
-si.clear_assumptions()
-```
-
-## Project Structure
-
-```
-approximate-model-counting/
-├── src/                           # Source files
-│   ├── solution_information.hpp   # C++ header
-│   ├── solution_information.cpp   # C++ implementation
-│   └── approximate_model_counting/ # Python package
-│       └── __init__.py
-├── bindings/                      # Python bindings (pybind11)
-│   └── python_bindings.cpp
-├── tests/                         # Python tests (pytest)
-│   └── test_solution_information.py
-├── CMakeLists.txt                 # CMake build configuration
-├── pyproject.toml                 # Python project configuration
-├── Justfile                       # Task runner commands
-├── .clang-format                  # C++ formatting rules
-└── README.md
-```
+Active areas of investigation:
+- Handling UNKNOWN solver results when conflict limits are reached on hard subproblems
+- Variable selection heuristics (see [notes/lookahead-sat-solving.txt](notes/lookahead-sat-solving.txt))
+- Scaling to larger benchmarks from the Model Counting Competition
 
 ## License
 
