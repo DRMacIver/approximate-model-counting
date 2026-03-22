@@ -5,6 +5,7 @@
 #include "refinable_partition.hpp"
 #include "solution_information.hpp"
 #include "solution_table.hpp"
+#include "solver.hpp"
 #include "utils.hpp"
 #include "variable_interaction_graph.hpp"
 
@@ -115,4 +116,34 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
              py::arg("current_separator"), py::arg("scope"), py::arg("excluded"), py::arg("n"))
         .def("connected_components", &amc::VariableInteractionGraph::connected_components,
              py::arg("scope"), py::arg("excluded"));
+
+    py::class_<amc::Solver>(m, "Solver")
+        .def(py::init<const std::vector<std::vector<int>>&>(),
+             py::arg("bootstrap_with") = std::vector<std::vector<int>>{},
+             "Create a Solver, optionally bootstrapped with clauses")
+        .def_static("from_file", &amc::Solver::from_file, py::arg("path"),
+                    "Create a Solver by reading a DIMACS CNF file")
+        .def("add_clause", &amc::Solver::add_clause, py::arg("clause"), "Add a single clause")
+        .def("append_formula", &amc::Solver::append_formula, py::arg("formula"),
+             "Add multiple clauses")
+        .def("solve", &amc::Solver::solve, py::arg("assumptions") = std::vector<int>{},
+             "Solve with optional assumptions. Returns True if SAT, False if UNSAT.")
+        .def("solve_limited", &amc::Solver::solve_limited,
+             py::arg("assumptions") = std::vector<int>{},
+             "Solve with resource limits. Returns True (SAT), False (UNSAT), or None (UNKNOWN).")
+        .def("get_model", &amc::Solver::get_model,
+             "Get the model from the last SAT result, or None")
+        .def("get_core", &amc::Solver::get_core,
+             "Get the UNSAT core (subset of assumptions), or None")
+        .def("propagate", &amc::Solver::propagate, py::arg("assumptions") = std::vector<int>{},
+             "Propagate under assumptions. Returns (status, propagated_literals).")
+        .def("nof_vars", &amc::Solver::nof_vars, "Number of variables")
+        .def("nof_clauses", &amc::Solver::nof_clauses, "Number of clauses")
+        .def("conf_budget", &amc::Solver::conf_budget, py::arg("budget") = -1,
+             "Set conflict budget for solve_limited()")
+        .def("prop_budget", &amc::Solver::prop_budget, py::arg("budget") = -1,
+             "Set propagation budget for solve_limited()")
+        .def("__enter__", [](amc::Solver& s) -> amc::Solver& { return s; })
+        .def("__exit__",
+             [](amc::Solver&, const py::object&, const py::object&, const py::object&) {});
 }

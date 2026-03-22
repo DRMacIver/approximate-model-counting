@@ -88,6 +88,7 @@ FetchContent_MakeAvailable(pybind11)
 # Core library
 add_library(amc_core STATIC
     src/boolean_equivalence.cpp
+    src/solver.cpp
     src/utils.cpp
     src/refinable_partition.cpp
     src/solution_information.cpp

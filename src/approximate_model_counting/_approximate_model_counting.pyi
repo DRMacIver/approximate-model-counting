@@ -243,3 +243,53 @@ class VariableInteractionGraph:
     def connected_components(self, scope: list[int], excluded: set[int]) -> list[list[int]]:
         """Get connected components of scope after removing excluded variables."""
         ...
+
+class Solver:
+    """PySAT-compatible SAT solver wrapping CaDiCaL.
+
+    Mirrors the pysat.solvers.Solver interface without depending on PySAT.
+    Supports context manager protocol.
+    """
+
+    def __init__(self, bootstrap_with: list[list[int]] = ...) -> None:
+        """Create a Solver, optionally bootstrapped with clauses."""
+        ...
+    @staticmethod
+    def from_file(path: str) -> Solver:
+        """Create a Solver by reading a DIMACS CNF file."""
+        ...
+    def add_clause(self, clause: list[int]) -> None:
+        """Add a single clause."""
+        ...
+    def append_formula(self, formula: list[list[int]]) -> None:
+        """Add multiple clauses."""
+        ...
+    def solve(self, assumptions: list[int] = ...) -> bool:
+        """Solve with optional assumptions. Returns True if SAT, False if UNSAT."""
+        ...
+    def solve_limited(self, assumptions: list[int] = ...) -> bool | None:
+        """Solve with resource limits. Returns True (SAT), False (UNSAT), or None (UNKNOWN)."""
+        ...
+    def get_model(self) -> list[int] | None:
+        """Get the satisfying assignment from the last SAT result, or None."""
+        ...
+    def get_core(self) -> list[int] | None:
+        """Get the UNSAT core (subset of assumptions) from the last UNSAT result, or None."""
+        ...
+    def propagate(self, assumptions: list[int] = ...) -> tuple[bool, list[int]]:
+        """Propagate under assumptions. Returns (status, propagated_literals)."""
+        ...
+    def nof_vars(self) -> int:
+        """Number of variables in the solver."""
+        ...
+    def nof_clauses(self) -> int:
+        """Number of clauses added."""
+        ...
+    def conf_budget(self, budget: int = -1) -> None:
+        """Set conflict budget for solve_limited(). -1 = unlimited."""
+        ...
+    def prop_budget(self, budget: int = -1) -> None:
+        """Set propagation budget for solve_limited(). -1 = unlimited."""
+        ...
+    def __enter__(self) -> Solver: ...
+    def __exit__(self, *args: object) -> None: ...
