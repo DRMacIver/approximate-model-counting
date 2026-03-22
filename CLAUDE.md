@@ -100,6 +100,10 @@ The UNKNOWN status is for future use with resource-limited solving (time/conflic
 - clang-format (C++ formatting)
 - ruff (Python formatting/linting)
 
+## Running Commands
+
+Under no circumstances pipe commands to tail. Either the command is short-running, in which case this is useless, or the command is long-running, in which case this will buffer all output preventing you from debugging what is going on. Redirect command outputs to files if you need to.
+
 <!-- claude-reliability:binary-instructions managed section - DO NOT EDIT -->
 ## claude-reliability Binary
 
