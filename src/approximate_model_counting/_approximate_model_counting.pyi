@@ -2,6 +2,13 @@
 
 from enum import Enum
 
+def parse_dimacs(path: str) -> list[list[int]]:
+    """Parse a DIMACS CNF file and return the clauses.
+
+    Raises RuntimeError if the file cannot be read or parsed.
+    """
+    ...
+
 def is_satisfiable(clauses: list[list[int]]) -> bool:
     """Check if a set of clauses is satisfiable."""
     ...

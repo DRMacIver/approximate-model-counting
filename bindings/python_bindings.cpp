@@ -13,6 +13,9 @@ namespace py = pybind11;
 PYBIND11_MODULE(_approximate_model_counting, m) {
     m.doc() = "Approximate model counting using Monte Carlo methods";
 
+    m.def("parse_dimacs", &amc::parse_dimacs, py::arg("path"),
+          "Parse a DIMACS CNF file and return the clauses");
+
     m.def("is_satisfiable", &amc::is_satisfiable, py::arg("clauses"),
           "Check if a set of clauses is satisfiable");
 

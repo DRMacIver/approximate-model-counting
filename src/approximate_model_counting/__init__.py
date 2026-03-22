@@ -11,6 +11,7 @@ from ._approximate_model_counting import (  # pyright: ignore[reportMissingModul
     VariableInteractionGraph,
     find_solution,
     is_satisfiable,
+    parse_dimacs,
 )
 
 __all__ = [
@@ -24,5 +25,6 @@ __all__ = [
     "VariableInteractionGraph",
     "find_solution",
     "is_satisfiable",
+    "parse_dimacs",
 ]
 __version__ = "0.1.0"

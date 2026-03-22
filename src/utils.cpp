@@ -40,6 +40,20 @@ public:
 
 }  // namespace
 
+std::vector<std::vector<int>> parse_dimacs(const std::string& path) {
+    CaDiCaL::Solver solver;
+    solver.set("quiet", 1);
+    int vars = 0;
+    const char* error = solver.read_dimacs(path.c_str(), vars, 1);
+    if (error) {
+        throw std::runtime_error(std::string("Failed to read DIMACS file: ") + error);
+    }
+    std::vector<std::vector<int>> clauses;
+    ClauseCollector collector(clauses);
+    solver.traverse_clauses(collector);
+    return clauses;
+}
+
 bool is_satisfiable(const std::vector<std::vector<int>>& clauses) {
     CaDiCaL::Solver solver;
     for (const auto& clause : clauses) {

@@ -24,13 +24,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build position-independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Coverage flags
+# Coverage flags (applied per-target below, not globally, to avoid
+# instrumenting third-party dependencies)
 option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
-if(ENABLE_COVERAGE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
-endif()
 
 include(FetchContent)
 
@@ -100,6 +96,11 @@ add_library(amc_core STATIC
 )
 
 target_compile_options(amc_core PRIVATE -Wall -Wextra -Wpedantic)
+
+if(ENABLE_COVERAGE)
+    target_compile_options(amc_core PRIVATE --coverage)
+    target_link_options(amc_core PUBLIC --coverage)
+endif()
 
 target_include_directories(amc_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src

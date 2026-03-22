@@ -1,11 +1,16 @@
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "cadical.hpp"
 
 namespace amc {
+
+// Parse a DIMACS CNF file and return the clauses.
+// Throws std::runtime_error if the file cannot be read or parsed.
+std::vector<std::vector<int>> parse_dimacs(const std::string& path);
 
 // Check if a set of clauses is satisfiable.
 bool is_satisfiable(const std::vector<std::vector<int>>& clauses);

@@ -6,7 +6,8 @@ build:
 # Build with coverage instrumentation
 build-coverage:
     uv sync --all-extras
-    rm -rf build
+    rm -f build/CMakeCache.txt
+    rm -rf build/CMakeFiles/amc_core.dir build/CMakeFiles/_approximate_model_counting.dir build/CMakeFiles/_test_internals.dir
     ENABLE_COVERAGE=ON SKBUILD_BUILD_DIR=build uv pip install -e . --no-build-isolation --force-reinstall
 
 # Run tests
@@ -50,7 +51,7 @@ test-coverage:
         '*/approximate-model-counting/src/*.cpp' \
         '*/approximate-model-counting/bindings/*.cpp' \
         --output-file coverage.info \
-        --ignore-errors inconsistent,unsupported
+        --ignore-errors inconsistent,unsupported,unused
     lcov --list coverage.info --ignore-errors inconsistent,unsupported
 
     # Check C++ coverage is 100%
