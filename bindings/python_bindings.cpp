@@ -111,9 +111,11 @@ PYBIND11_MODULE(_approximate_model_counting, m) {
         .def("num_edges", &amc::VariableInteractionGraph::num_edges)
         .def("decompose", &amc::VariableInteractionGraph::decompose, py::arg("n") = 20)
         .def("find_separator", &amc::VariableInteractionGraph::find_separator, py::arg("scope"),
-             py::arg("excluded"), py::arg("n"))
+             py::arg("excluded"), py::arg("n"),
+             py::arg("scores") = std::unordered_map<int, double>{})
         .def("enlarge_separator", &amc::VariableInteractionGraph::enlarge_separator,
-             py::arg("current_separator"), py::arg("scope"), py::arg("excluded"), py::arg("n"))
+             py::arg("current_separator"), py::arg("scope"), py::arg("excluded"), py::arg("n"),
+             py::arg("scores") = std::unordered_map<int, double>{})
         .def("connected_components", &amc::VariableInteractionGraph::connected_components,
              py::arg("scope"), py::arg("excluded"));
 

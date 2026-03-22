@@ -221,10 +221,18 @@ class VariableInteractionGraph:
     def decompose(self, n: int = 20) -> DecompositionNode:
         """Recursively decompose until components have at most n variables."""
         ...
-    def find_separator(self, scope: list[int], excluded: set[int], n: int) -> list[int]:
+    def find_separator(
+        self,
+        scope: list[int],
+        excluded: set[int],
+        n: int,
+        scores: dict[int, float] = ...,
+    ) -> list[int]:
         """Find the best n separator variables from scope.
 
         Variables in excluded are treated as already removed.
+        Optional scores dict (e.g. from march_score) is used as tiebreaker
+        (higher = preferred).
         """
         ...
     def enlarge_separator(
@@ -233,11 +241,13 @@ class VariableInteractionGraph:
         scope: list[int],
         excluded: set[int],
         n: int,
+        scores: dict[int, float] = ...,
     ) -> list[int]:
         """Enlarge an existing separator to target size n.
 
         Returns current_separator plus the best additional variables,
         chosen by the same ranking as find_separator.
+        Optional scores dict is used as tiebreaker (higher = preferred).
         """
         ...
     def connected_components(self, scope: list[int], excluded: set[int]) -> list[list[int]]:

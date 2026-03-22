@@ -187,6 +187,58 @@ def test_find_separator_respects_excluded():
         assert v not in sep
 
 
+# --- find_separator with scores ---
+
+
+def test_find_separator_scores_tiebreak_degree():
+    """Scores should break ties between variables with equal degree."""
+    # Star graph: hub 1 connected to 2..21. All leaves have degree 1.
+    clauses = [[1, i] for i in range(2, 22)]
+    vig = VariableInteractionGraph(clauses)
+    all_vars = vig.variables()
+
+    # Without scores, leaves are chosen by variable number (ascending)
+    sep_no_scores = vig.find_separator(all_vars, set(), 5)
+
+    # Give high scores to high-numbered leaves
+    scores = {i: float(i) for i in range(2, 22)}
+    sep_with_scores = vig.find_separator(all_vars, set(), 5, scores=scores)
+
+    # Both should have the same size
+    assert len(sep_no_scores) == len(sep_with_scores) == 5
+    # With scores, higher-numbered leaves should be preferred over lower-numbered ones
+    # (since all leaves have the same degree, scores are the tiebreaker)
+    assert max(sep_with_scores) > max(sep_no_scores)
+
+
+def test_find_separator_scores_tiebreak_boundary():
+    """Scores should break ties between boundary variables with equal inter-community edges."""
+    # Two dense clusters connected by multiple bridge variables.
+    # Cluster A: 1-10 (fully connected), Cluster B: 11-20 (fully connected)
+    # Bridges: 5-11, 6-12, 7-13, 8-14, 9-15, 10-16 (all have 1 inter-community edge)
+    clauses = []
+    for i in range(1, 11):
+        for j in range(i + 1, 11):
+            clauses.append([i, j])
+    for i in range(11, 21):
+        for j in range(i + 1, 21):
+            clauses.append([i, j])
+    bridges = [(5, 11), (6, 12), (7, 13), (8, 14), (9, 15), (10, 16)]
+    for a, b in bridges:
+        clauses.append([a, b])
+
+    vig = VariableInteractionGraph(clauses)
+    all_vars = vig.variables()
+
+    # Give high scores to specific bridge variables
+    scores = {10: 100.0, 16: 90.0, 5: 80.0, 11: 70.0}
+    sep = vig.find_separator(all_vars, set(), 3, scores=scores)
+    assert len(sep) == 3
+    # The scored bridge variables should be preferred
+    scored_in_sep = [v for v in sep if v in scores]
+    assert len(scored_in_sep) >= 1
+
+
 # Clause strategy: lists of non-zero integers
 clause_strategy = st.lists(
     st.integers(min_value=-20, max_value=20).filter(lambda x: x != 0), min_size=1, max_size=5

@@ -102,21 +102,22 @@ std::vector<std::vector<int>> VariableInteractionGraph::connected_components(
     return components;
 }
 
-std::vector<int> VariableInteractionGraph::find_separator(const std::vector<int>& scope,
-                                                          const std::unordered_set<int>& excluded,
-                                                          int n) const {
-    return find_separator_impl(scope, excluded, {}, n);
+std::vector<int> VariableInteractionGraph::find_separator(
+    const std::vector<int>& scope, const std::unordered_set<int>& excluded, int n,
+    const std::unordered_map<int, double>& scores) const {
+    return find_separator_impl(scope, excluded, {}, n, scores);
 }  // LCOV_EXCL_LINE - NRVO closing brace
 
 std::vector<int> VariableInteractionGraph::enlarge_separator(
     const std::vector<int>& current_separator, const std::vector<int>& scope,
-    const std::unordered_set<int>& excluded, int n) const {
-    return find_separator_impl(scope, excluded, current_separator, n);
+    const std::unordered_set<int>& excluded, int n,
+    const std::unordered_map<int, double>& scores) const {
+    return find_separator_impl(scope, excluded, current_separator, n, scores);
 }
 
 std::vector<int> VariableInteractionGraph::find_separator_impl(
     const std::vector<int>& scope, const std::unordered_set<int>& excluded,
-    const std::vector<int>& initial, int n) const {
+    const std::vector<int>& initial, int n, const std::unordered_map<int, double>& scores) const {
     // Build active set
     std::unordered_set<int> active(scope.begin(), scope.end());
     for (int v : excluded) {
@@ -211,13 +212,20 @@ std::vector<int> VariableInteractionGraph::find_separator_impl(
     }
 
     if (num_communities > 1 && !boundary_vars.empty()) {
-        // Sort boundary vars by inter-community edge count (descending), then by variable
-        // for determinism
-        std::sort(boundary_vars.begin(), boundary_vars.end(), [](const auto& a, const auto& b) {
-            if (a.first != b.first)
-                return a.first > b.first;
-            return a.second < b.second;
-        });
+        // Sort boundary vars by inter-community edge count (descending),
+        // then by march score (descending), then by variable number for determinism
+        std::sort(boundary_vars.begin(), boundary_vars.end(),
+                  [&scores](const auto& a, const auto& b) {
+                      if (a.first != b.first)
+                          return a.first > b.first;
+                      auto sa = scores.find(a.second);
+                      auto sb = scores.find(b.second);
+                      double score_a = (sa != scores.end()) ? sa->second : 0.0;
+                      double score_b = (sb != scores.end()) ? sb->second : 0.0;
+                      if (score_a != score_b)
+                          return score_a > score_b;
+                      return a.second < b.second;
+                  });
 
         for (const auto& [count, var] : boundary_vars) {
             if (static_cast<int>(separator.size()) >= n)
@@ -246,10 +254,17 @@ std::vector<int> VariableInteractionGraph::find_separator_impl(
             candidates.push_back({degree, var});
         }
 
-        // Sort by degree descending, then variable ascending for determinism
-        std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
+        // Sort by degree descending, then march score descending,
+        // then variable ascending for determinism
+        std::sort(candidates.begin(), candidates.end(), [&scores](const auto& a, const auto& b) {
             if (a.first != b.first)
                 return a.first > b.first;
+            auto sa = scores.find(a.second);
+            auto sb = scores.find(b.second);
+            double score_a = (sa != scores.end()) ? sa->second : 0.0;
+            double score_b = (sb != scores.end()) ? sb->second : 0.0;
+            if (score_a != score_b)
+                return score_a > score_b;
             return a.second < b.second;
         });
 
