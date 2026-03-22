@@ -93,3 +93,8 @@ include = ["src", "tests"]
 exclude = ["build", ".venv"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+]

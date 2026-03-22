@@ -68,14 +68,14 @@ def process_file(cnf_path: Path, seed: int | None) -> dict[str, Any]:
     if root_info.solvable() == Status.SATISFIABLE:
         table = root_info.get_solution_table()
         # Sample 10 random rows (table always has >= 1 row for SAT formulas)
-        if len(table) > 0:  # pragma: no branch
-            rng = random.Random(seed)
-            num_samples = min(10, len(table))
-            indices = rng.sample(range(len(table)), num_samples)
-            for idx in indices:
-                row = list(table[idx])
-                sample_info = mc.with_assumptions(row)
-                result["samples"].append(build_solution_info(sample_info))
+        assert len(table) > 0
+        rng = random.Random(seed)
+        num_samples = min(10, len(table))
+        indices = rng.sample(range(len(table)), num_samples)
+        for idx in indices:
+            row = list(table[idx])
+            sample_info = mc.with_assumptions(row)
+            result["samples"].append(build_solution_info(sample_info))
 
     return result
 
