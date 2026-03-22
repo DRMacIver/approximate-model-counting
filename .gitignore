@@ -90,3 +90,5 @@ benchmarks/data/
 .claude/*.local.json
 .claude/*.local
 .claude-reliability/
+
+notebooks
